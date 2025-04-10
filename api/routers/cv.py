@@ -1,3 +1,4 @@
+# api/routers/cv.py (updated)
 import os
 import uuid
 from datetime import datetime
@@ -19,6 +20,7 @@ from api.db.models import (
     CreditTransactionType
 )
 from api.integrations.openai import analyze_cv
+from api.queue.job_queue import job_queue
 
 router = APIRouter(prefix="/cv", tags=["cv"])
 
@@ -76,7 +78,6 @@ async def upload_cv(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     file: UploadFile = File(...),
-    background_tasks: BackgroundTasks,
 ) -> Any:
     """
     Upload a CV file for analysis.
@@ -85,7 +86,6 @@ async def upload_cv(
         db: Database session
         current_user: Current authenticated user
         file: Uploaded CV file
-        background_tasks: Background tasks manager
         
     Returns:
         Created submission
@@ -154,8 +154,8 @@ async def upload_cv(
     db.add(transaction)
     db.commit()
     
-    # Start background task to process the CV
-    background_tasks.add_task(process_cv, db, submission.id)
+    # Add job to queue
+    job_queue.add_job(submission.id, {"db": db, "submission_id": submission.id})
     
     return submission
 

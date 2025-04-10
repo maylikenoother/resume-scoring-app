@@ -1,9 +1,13 @@
+# api/integrations/openai.py
 import os
 from typing import Dict, Optional, Tuple
+import logging
 
 from openai import OpenAI
 
 from api.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 # Initialize the OpenAI client
 client = OpenAI(api_key=settings.openai_api_key)
@@ -26,6 +30,7 @@ async def analyze_cv(cv_text: str) -> Tuple[float, str]:
         # If no API key is set, return mock data for testing
         if not settings.openai_api_key:
             # During development, return mock data
+            logger.warning("No OpenAI API key set. Using mock data.")
             return 7.5, "This is mock feedback for your CV. In production, we would use OpenAI's API to provide detailed analysis of your resume."
         
         # Define the system prompt for CV analysis
@@ -47,7 +52,7 @@ async def analyze_cv(cv_text: str) -> Tuple[float, str]:
         SCORE: [numerical score]
         
         FEEDBACK:
-        [detailed feedback]
+        [detailed feedback with specific recommendations for improvement]
         """
         
         # Create the completion using the OpenAI API
@@ -83,11 +88,13 @@ async def analyze_cv(cv_text: str) -> Tuple[float, str]:
                 return score, feedback
             except ValueError:
                 # If score parsing fails, use default values
+                logger.error("Failed to parse score from OpenAI response")
                 return 5.0, response_text
         else:
             # If we can't parse the structure, return the full text as feedback with default score
+            logger.warning("Failed to find SCORE in OpenAI response")
             return 5.0, response_text
             
     except Exception as e:
-        # In case of error, return a default score with error message
+        logger.exception(f"Error analyzing CV: {e}")
         return 0.0, f"Error analyzing CV: {str(e)}"
