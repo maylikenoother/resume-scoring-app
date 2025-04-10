@@ -1,12 +1,13 @@
+# api/auth/routes.py (update)
 from datetime import timedelta
-from typing import Any
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from pydantic import BaseModel
 
-from api.core.security import create_access_token, get_password_hash, verify_password
+from api.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password
 from api.config.settings import settings
 from api.db.database import get_db
 from api.db.models import User, UserCreate, UserRead
@@ -16,7 +17,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
+
+
+class RefreshToken(BaseModel):
+    refresh_token: str
 
 
 @router.post("/register", response_model=UserRead)
@@ -100,4 +106,80 @@ def login(
         subject=user.email, expires_delta=access_token_expires
     )
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Create refresh token
+    refresh_token_expires = timedelta(minutes=settings.access_token_expire_minutes * 2)
+    refresh_token = create_refresh_token(
+        subject=user.email, expires_delta=refresh_token_expires
+    )
+    
+    return {
+        "access_token": access_token, 
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(
+    db: Session = Depends(get_db), 
+    refresh_token_in: RefreshToken = None
+) -> Any:
+    """
+    Refresh access token using a refresh token.
+    
+    Args:
+        db: Database session
+        refresh_token_in: Refresh token
+        
+    Returns:
+        New access token and refresh token
+        
+    Raises:
+        HTTPException: If refresh token is invalid
+    """
+    try:
+        payload = jwt.decode(
+            refresh_token_in.refresh_token, 
+            settings.secret_key, 
+            algorithms=[settings.algorithm]
+        )
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        email = payload["sub"]
+        user = db.exec(select(User).where(User.email == email)).first()
+        
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user or inactive user",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Create new access token
+        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+        access_token = create_access_token(
+            subject=user.email, expires_delta=access_token_expires
+        )
+        
+        # Create new refresh token
+        refresh_token_expires = timedelta(minutes=settings.access_token_expire_minutes * 2)
+        new_refresh_token = create_refresh_token(
+            subject=user.email, expires_delta=refresh_token_expires
+        )
+        
+        return {
+            "access_token": access_token, 
+            "refresh_token": new_refresh_token,
+            "token_type": "bearer"
+        }
+    except (JWTError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

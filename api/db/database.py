@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from pathlib import Path
 
+from api.config.settings import settings
+
 # Determine if we're in production or development
 IS_PRODUCTION = os.environ.get("VERCEL_ENV") == "production"
 BASE_DIR = Path(__file__).parent.parent.parent
