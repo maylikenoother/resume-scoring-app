@@ -1,76 +1,83 @@
 import httpx
-from typing import Optional
-import asyncio
 import logging
+import asyncio
+import json
+from typing import Dict, Any
 
-from app.core.config import settings
+from api.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 async def generate_review(cv_content: str) -> str:
-    """
-    Generate a CV review using the HuggingFace API
-    
-    Args:
-        cv_content: The content of the CV to review
-        
-    Returns:
-        A generated review of the CV
-    """
-    # Simulate processing delay for development 
-    # This would be removed in production
-    await asyncio.sleep(5)
+    await asyncio.sleep(3)  # Simulate processing delay
     
     try:
-        # Prepare the prompt for the model
-        prompt = f"""
-        Please review the following CV and provide professional feedback on how to improve it:
-        
-        {cv_content}
-        
-        Please provide feedback on:
-        1. Overall structure and formatting
-        2. Content and relevance
-        3. Skills and qualifications
-        4. Experience description
-        5. Education section
-        6. Specific improvements
-        """
-        
-        # Check if we have a HuggingFace API token
-        if settings.HUGGINGFACE_API_TOKEN:
-            # Call HuggingFace API
+        if settings.AI_API_TOKEN:
+            prompt = f"""
+            Please review the following CV and provide professional feedback on how to improve it:
+            
+            {cv_content}
+            
+            Provide feedback on:
+            1. Overall structure and formatting
+            2. Content and relevance
+            3. Skills and qualifications
+            4. Experience description
+            5. Education section
+            6. Specific improvements
+            """
+            
+            headers = {"Authorization": f"Bearer {settings.AI_API_TOKEN}"}
+            
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"https://api-inference.huggingface.co/models/{settings.HUGGINGFACE_MODEL}",
-                    headers={"Authorization": f"Bearer {settings.HUGGINGFACE_API_TOKEN}"},
-                    json={"inputs": prompt, "parameters": {"max_length": 1000, "temperature": 0.7}}
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": settings.AI_MODEL,
+                        "messages": [
+                            {"role": "system", "content": "You are a professional CV reviewer."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "max_tokens": 1000,
+                        "temperature": 0.7
+                    },
+                    timeout=30.0
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    # Extract the generated text from the response
-                    # The exact format depends on the model being used
-                    if isinstance(data, list) and len(data) > 0:
-                        if "generated_text" in data[0]:
-                            return data[0]["generated_text"]
-                        return data[0]
-                    elif isinstance(data, dict) and "generated_text" in data:
-                        return data["generated_text"]
-                    else:
-                        logger.error(f"Unexpected response format: {data}")
-                        return generate_mock_review()
+                    return data["choices"][0]["message"]["content"]
                 else:
-                    logger.error(f"HuggingFace API error: {response.status_code} - {response.text}")
-                    return generate_mock_review()
+                    logger.error(f"API error: {response.status_code} - {response.text}")
+                    return generate_mock_review(cv_content)
         else:
-            # If no API token, generate a mock review for development
-            return generate_mock_review()
+            return generate_mock_review(cv_content)
             
     except Exception as e:
         logger.exception(f"Error generating CV review: {e}")
-        return generate_mock_review()
+        return generate_mock_review(cv_content)
 
-def generate_mock_review() -> str:
+def generate_mock_review(cv_content: str) -> str:
+    sections = ["# CV Review Summary", 
+                "Thank you for submitting your CV for review. Here's my professional feedback to help you improve your CV.",
+                
+                "## Overall Structure and Formatting",
+                "Your CV has a clear structure, but consider using more consistent formatting for section headings. Add more whitespace between sections to improve readability.",
+                
+                "## Content and Relevance",
+                "The content is relevant to your field, but you should tailor specific achievements to match job descriptions. Quantify your achievements with specific metrics where possible.",
+                
+                "## Skills and Qualifications",
+                "Your skills section is comprehensive, but consider organizing technical skills by proficiency level. Add any relevant certifications or training programs.",
+                
+                "## Experience Description",
+                "Your experience descriptions focus too much on responsibilities rather than achievements. Restructure these to highlight results and impact. Use action verbs at the beginning of each bullet point.",
+                
+                "## Education Section",
+                "Your education section is clear, but consider adding relevant coursework, academic achievements, or projects if you're early in your career.",
+                
+                "## Specific Improvements",
+                "1. Add a professional summary at the top\n2. Include LinkedIn and GitHub profiles\n3. Remove references to outdated technologies\n4. Prioritize most recent and relevant experience"]
     
-    return 
+    return "\n\n".join(sections)

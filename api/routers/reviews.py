@@ -1,19 +1,18 @@
-from typing import Any, List
+from typing import Any
 import os
 from pathlib import Path
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy import desc
+from sqlalchemy import select, desc
 
-from app.core.auth import get_current_active_user
-from app.core.database import get_db
-from app.models.models import User, Review, CreditBalance, Notification, CreditTransaction
-from app.schemas.schemas import ReviewList, Review as ReviewSchema
-from app.services.ai_service import generate_review
-from app.core.config import settings
+from api.core.auth import get_current_active_user
+from api.core.database import get_db, AsyncSessionLocal
+from api.models.models import User, Review, CreditBalance, Notification, CreditTransaction
+from api.schemas.schemas import ReviewList, Review as ReviewSchema
+from api.services.ai_service import generate_review
+from api.core.config import settings
 
 router = APIRouter(
     prefix="/reviews",
@@ -41,7 +40,7 @@ async def upload_cv_for_review(
     
     content = await file.read()
     if isinstance(content, bytes):
-        content = content.decode("utf-8")
+        content = content.decode("utf-8", errors="ignore")
     
     upload_dir = Path("uploads")
     upload_dir.mkdir(exist_ok=True)
@@ -75,7 +74,6 @@ async def upload_cv_for_review(
     
     notification = Notification(
         user_id=current_user.id,
-        review_id=None, 
         message=f"Your CV '{file.filename}' has been submitted for review",
         is_read=False
     )
@@ -87,11 +85,11 @@ async def upload_cv_for_review(
     notification.review_id = new_review.id
     await db.commit()
 
-    background_tasks.add_task(process_review, new_review.id, db)
+    background_tasks.add_task(process_review, new_review.id)
     
     return new_review
 
-async def process_review(review_id: int, db: AsyncSession):
+async def process_review(review_id: int):
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(Review).where(Review.id == review_id)
@@ -117,7 +115,7 @@ async def process_review(review_id: int, db: AsyncSession):
             
             review.status = "completed"
             review.review_result = review_result
-            review.score = 7.5 
+            review.score = 7.5  # This would be calculated based on the AI analysis
             
             notification = Notification(
                 user_id=review.user_id,
@@ -178,4 +176,3 @@ async def get_review(
         )
     
     return review
-    

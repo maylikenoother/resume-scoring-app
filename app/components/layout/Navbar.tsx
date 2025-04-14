@@ -46,9 +46,11 @@ export default function Navbar() {
 
   const fetchUserData = async () => {
     try {
+      const token = localStorage.getItem('token');
+      
       const balanceResponse = await fetch('/api/py/credits/balance', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
@@ -59,7 +61,7 @@ export default function Navbar() {
       
       const notifResponse = await fetch('/api/py/notifications/unread-count', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
@@ -231,9 +233,6 @@ export default function Navbar() {
                   open={Boolean(anchorElUser)}
                   onClose={handleCloseUserMenu}
                 >
-                  <MenuItem onClick={() => router.push('/profile')}>
-                    <Typography textAlign="center">Profile</Typography>
-                  </MenuItem>
                   <MenuItem onClick={handleLogout}>
                     <Typography textAlign="center">Logout</Typography>
                   </MenuItem>
@@ -253,5 +252,5 @@ export default function Navbar() {
         </Toolbar>
       </Container>
     </AppBar>
-  );
-}
+    );
+  }

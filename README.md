@@ -6,13 +6,13 @@ This project is an AI-powered CV review application built for the CMP9785M Cloud
 
 - **User Authentication**: JWT-based authentication system
 - **Credit System**: Users can purchase and spend credits to use AI services
-- **AI Integration**: Hugging Face API integration for CV analysis
+- **AI Integration**: External AI API integration for CV analysis
 - **Queue System**: Background processing for CV reviews
 - **Notification System**: Real-time notifications for users
 - **Responsive UI**: Clean, modern interface built with Material UI
 - **API Documentation**: Comprehensive FastAPI documentation
 - **Testing**: Unit and integration tests with pytest
-- **Cloud-Ready**: Configured for deployment to Vercel
+- **Cloud-Ready**: Configured for deployment to cloud providers
 
 ## Architecture
 
@@ -21,7 +21,7 @@ The application follows a cloud-native microservices architecture:
 - **Backend**: FastAPI Python application
   - REST API endpoints
   - JWT authentication
-  - SQLite database (can be replaced with a cloud database in production)
+  - SQLite database (can be replaced with PostgreSQL in production)
   - Background task processing
   - External AI API integration
   
@@ -39,36 +39,13 @@ The application follows a cloud-native microservices architecture:
   - Pydantic - Data validation
   - JWT - Authentication
   - pytest - Testing
-  - Hugging Face - AI integration
+  - External AI API integration
   
 - **Frontend**:
   - Next.js - React framework
   - Material UI - Component library
   - TypeScript - Type-safe JavaScript
   - React Hooks - State management
-
-## Project Structure
-
-```
-/
-├── api/                  # Backend API
-│   ├── core/             # Core functionality
-│   │   ├── auth.py       # Authentication
-│   │   ├── config.py     # Configuration
-│   │   └── database.py   # Database setup
-│   ├── models/           # Database models
-│   ├── routers/          # API routes
-│   ├── schemas/          # Pydantic schemas
-│   ├── services/         # Business logic
-│   └── tests/            # Unit tests
-├── app/                  # Frontend application
-│   ├── components/       # React components
-│   ├── (app)/            # Protected routes
-│   ├── (auth)/           # Authentication routes
-│   └── theme.ts          # Theme configuration
-├── README.md             # Project documentation
-└── package.json          # Frontend dependencies
-```
 
 ## Setup and Installation
 
@@ -78,101 +55,51 @@ The application follows a cloud-native microservices architecture:
 - Node.js 18+
 - npm or yarn
 
-### Backend Setup
+### Installation
 
-1. Navigate to the API directory:
+1. Clone the repository:
    ```
-   cd api
-   ```
-
-2. Create a virtual environment:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   git clone https://github.com/yourusername/cv-review-app.git
+   cd cv-review-app
    ```
 
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-4. Create a `.env` file with your configuration:
-   ```
-   HUGGINGFACE_API_TOKEN=your_token_here
-   SECRET_KEY=your_secret_key
-   ```
-
-5. Run the backend server:
-   ```
-   uvicorn main:app --reload
-   ```
-
-6. The API will be available at http://localhost:8000
-   - API documentation: http://localhost:8000/docs
-
-### Frontend Setup
-
-1. Navigate to the root directory and install dependencies:
+2. Install frontend dependencies:
    ```
    npm install
-   # or
-   yarn install
    ```
 
-2. Run the development server:
+3. Set up environment variables:
+   - Copy `.env.example` to `.env` in the `api` directory
+   - Update with your configuration (API keys, etc.)
+
+4. Run the development server (both frontend and backend):
    ```
    npm run dev
-   # or
-   yarn dev
    ```
 
-3. The frontend will be available at http://localhost:3000
-
-## API Documentation
-
-The API documentation is available at the `/api/py/docs` endpoint when the server is running. It provides comprehensive information about all available endpoints, request/response models, and authentication requirements.
-
-## Testing
-
-To run the tests:
-
-```
-cd api
-pytest
-```
+5. Access the application:
+   - Frontend: http://localhost:3000
+   - API documentation: http://localhost:8000/docs
 
 ## Deployment
 
-The application is configured for deployment to Vercel:
+The application is ready for deployment to services like Vercel, AWS, or Azure:
 
-1. Create a new Vercel project
-2. Link your GitHub repository
-3. Configure the following environment variables:
-   - `HUGGINGFACE_API_TOKEN`: Your Hugging Face API token
-   - `SECRET_KEY`: A secure random string for JWT encryption
-4. Deploy!
+1. Database: Use PostgreSQL in production by updating the DATABASE_URL
+2. Environment Variables: Set AI API keys and other secrets in your deployment platform
+3. Build and Deploy: Follow your platform's guidelines for deploying Next.js and FastAPI applications
 
-## Assessment Criteria Fulfillment
+## Testing
 
-This project meets the assessment criteria in the following ways:
+Run the tests with:
 
-1. **Cloud-Native Application Design**:
-   - Microservices architecture
-   - Stateless authentication
-   - External service integration
-   - Container-ready structure
+```
+npm run test
+```
 
-2. **Secure, Scalable Cloud-Native Application**:
-   - JWT authentication
-   - Input validation
-   - Separation of concerns
-   - Scalable background processing
+## CI/CD
 
-3. **DevOps Practices**:
-   - Comprehensive testing
-   - CI/CD compatibility
-   - Clear documentation
-   - Containerization support
+The project includes configuration for GitHub Actions for continuous integration, providing automated testing and deployment.
 
 ## License
 

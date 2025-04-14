@@ -5,16 +5,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import (
+from api.core.auth import (
     authenticate_user,
     create_access_token,
     get_password_hash,
     get_current_active_user,
 )
-from app.core.config import settings
-from app.core.database import get_db
-from app.models.models import User, CreditBalance
-from app.schemas.schemas import Token, UserCreate, User as UserSchema
+from api.core.config import settings
+from api.core.database import get_db
+from api.models.models import User, CreditBalance
+from api.schemas.schemas import Token, UserCreate, User as UserSchema
 
 router = APIRouter(
     prefix="/auth",
@@ -45,14 +45,11 @@ async def register_new_user(
     user_in: UserCreate,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-
-    result = await db.execute(
+    user = await db.execute(
         "SELECT id FROM users WHERE email = :email",
         {"email": user_in.email}
     )
-    user_id = result.scalar_one_or_none()
-    
-    if user_id:
+    if user.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists",

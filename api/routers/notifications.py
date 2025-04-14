@@ -1,14 +1,13 @@
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy import desc
+from sqlalchemy import select, desc
 
-from app.core.auth import get_current_active_user
-from app.core.database import get_db
-from app.models.models import User, Notification
-from app.schemas.schemas import NotificationList, Notification as NotificationSchema
+from api.core.auth import get_current_active_user
+from api.core.database import get_db
+from api.models.models import User, Notification
+from api.schemas.schemas import NotificationList, Notification as NotificationSchema
 
 router = APIRouter(
     prefix="/notifications",
@@ -91,11 +90,11 @@ async def mark_all_notifications_as_read(
     
     return {"notifications": all_notifications}
 
-@router.get("/unread-count", response_model=int)
+@router.get("/unread-count")
 async def get_unread_count(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
-) -> Any:
+) -> int:
     result = await db.execute(
         select(Notification)
         .where(

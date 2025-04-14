@@ -8,10 +8,10 @@ from typing import AsyncGenerator, Generator
 from fastapi.testclient import TestClient
 from fastapi import Depends
 
-from app.core.database import Base, get_db
-from app.core.auth import get_current_active_user
-from app.main import app
-from app.models.models import User, CreditBalance, Review, Notification
+from api.core.database import Base, get_db
+from api.core.auth import get_current_active_user
+from api.main import app
+from api.models.models import User, CreditBalance
 
 TEST_SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 test_engine = create_async_engine(
@@ -28,6 +28,7 @@ TestingSessionLocal = sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False
 )
+
 async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
     async with TestingSessionLocal() as session:
         yield session
@@ -74,7 +75,6 @@ async def setup_test_db() -> AsyncGenerator:
 
 @pytest.fixture
 def client(setup_test_db) -> TestClient:
-    # Override dependencies
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
 

@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 def test_login(client: TestClient):
-    """Test login endpoint with valid credentials."""
     response = client.post(
         "/api/py/auth/login",
         data={"username": "test@example.com", "password": "password"}
@@ -13,7 +12,6 @@ def test_login(client: TestClient):
     assert response.json()["token_type"] == "bearer"
 
 def test_login_invalid_credentials(client: TestClient):
-    """Test login endpoint with invalid credentials."""
     response = client.post(
         "/api/py/auth/login",
         data={"username": "test@example.com", "password": "wrong_password"}
@@ -23,7 +21,6 @@ def test_login_invalid_credentials(client: TestClient):
     assert "detail" in response.json()
 
 def test_register(client: TestClient):
-    """Test user registration."""
     response = client.post(
         "/api/py/auth/register",
         json={
@@ -39,7 +36,6 @@ def test_register(client: TestClient):
     assert "id" in response.json()
 
 def test_register_existing_user(client: TestClient):
-    """Test registering with an email that already exists."""
     client.post(
         "/api/py/auth/register",
         json={

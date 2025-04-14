@@ -25,7 +25,6 @@ class UserInDBBase(UserBase):
 class User(UserInDBBase):
     pass
 
-# Token schemas
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -33,7 +32,6 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: Optional[str] = None
 
-# Credit schemas
 class CreditBalanceBase(BaseModel):
     balance: int
 

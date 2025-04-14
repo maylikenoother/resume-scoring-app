@@ -12,7 +12,6 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
 } from '@mui/material';
 import {
   CloudUpload as CloudUploadIcon,
@@ -26,7 +25,6 @@ export default function HomePage() {
   const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
 
-  // Check if user is authenticated
   useEffect(() => {
     const token = localStorage.getItem('token');
     setAuthenticated(!!token);
@@ -171,4 +169,3 @@ export default function HomePage() {
       </Box>
     </Box>
   );
-}
