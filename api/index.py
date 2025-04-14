@@ -47,9 +47,9 @@ app.include_router(notifications.router, prefix=settings.API_V1_STR)
 async def health_check():
     return {"status": "healthy"}
 
-@app.get(settings.API_V1_STR)
+@app.get("/")
 async def root():
-    return {"message": f"Welcome to {settings.PROJECT_NAME}"}
+    return {"message": f"Welcome to Resume Scoring App"}
 
 if __name__ == "__main__":
     import uvicorn
