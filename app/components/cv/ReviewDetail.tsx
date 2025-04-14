@@ -54,7 +54,7 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
     if (review?.status === 'processing' && !polling) {
       setPolling(true);
       const interval = setInterval(() => {
-        fetchReviewData(false);g
+        fetchReviewData(false);
       }, 5000);
       
       return () => {
