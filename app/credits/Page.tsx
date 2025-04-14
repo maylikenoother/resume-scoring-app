@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box } from '@mui/material';
-import NotificationList from '@/app/components/notifications/NotificationList';
+import CreditManager from '@/app/components/credits/CreditManager';
 import Navbar from '@/app/components/layout/Navbar';
 
-export default function NotificationsPage() {
+export default function CreditsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
-  // Check authentication
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -21,13 +20,13 @@ export default function NotificationsPage() {
   }, [router]);
 
   if (loading) {
-    return null; // or a loading spinner
+    return null;
   }
 
   return (
     <Box>
       <Navbar />
-      <NotificationList />
+      <CreditManager />
     </Box>
   );
 }

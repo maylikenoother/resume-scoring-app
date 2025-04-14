@@ -21,7 +21,7 @@ The application follows a cloud-native microservices architecture:
 - **Backend**: FastAPI Python application
   - REST API endpoints
   - JWT authentication
-  - SQLite database (can be replaced with PostgreSQL in production)
+  - Database (SQLite for development, PostgreSQL for production)
   - Background task processing
   - External AI API integration
   
@@ -39,13 +39,12 @@ The application follows a cloud-native microservices architecture:
   - Pydantic - Data validation
   - JWT - Authentication
   - pytest - Testing
-  - External AI API integration
+  - OpenAI API - External AI integration
   
 - **Frontend**:
   - Next.js - React framework
   - Material UI - Component library
   - TypeScript - Type-safe JavaScript
-  - React Hooks - State management
 
 ## Setup and Installation
 
@@ -58,49 +57,40 @@ The application follows a cloud-native microservices architecture:
 ### Installation
 
 1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/cv-review-app.git
-   cd cv-review-app
-   ```
 
 2. Install frontend dependencies:
-   ```
-   npm install
-   ```
 
 3. Set up environment variables:
-   - Copy `.env.example` to `.env` in the `api` directory
-   - Update with your configuration (API keys, etc.)
+- Copy `.env.example` to `.env` in the root directory
+- Update with your configuration (API keys, database URLs, etc.)
 
 4. Run the development server (both frontend and backend):
-   ```
-   npm run dev
-   ```
 
 5. Access the application:
-   - Frontend: http://localhost:3000
-   - API documentation: http://localhost:8000/docs
+- Frontend: http://localhost:3000
+- API documentation: http://localhost:8000/docs
 
 ## Deployment
 
-The application is ready for deployment to services like Vercel, AWS, or Azure:
+### Deploy to Vercel
 
-1. Database: Use PostgreSQL in production by updating the DATABASE_URL
-2. Environment Variables: Set AI API keys and other secrets in your deployment platform
-3. Build and Deploy: Follow your platform's guidelines for deploying Next.js and FastAPI applications
+1. Push your repository to GitHub
+2. Link your repository to Vercel
+3. Set up environment variables in Vercel
+4. Deploy!
 
-## Testing
+### Docker Deployment
 
-Run the tests with:
+You can also use Docker for deployment:
 
-```
+```bash
+# Build the Docker image
+docker build -t cv-review-app .
+
+# Run the Docker container
+docker run -p 3000:3000 -p 8000:8000 cv-review-app
+
 npm run test
-```
 
-## CI/CD
+### 5. Create .env.example file to guide users
 
-The project includes configuration for GitHub Actions for continuous integration, providing automated testing and deployment.
-
-## License
-
-This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.

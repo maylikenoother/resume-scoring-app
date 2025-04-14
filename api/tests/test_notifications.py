@@ -3,8 +3,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
 
-from app.models.models import Notification
-from app.tests.conftest import TestingSessionLocal, TEST_USER
+from api.models.models import Notification
+from api.tests.conftest import TestingSessionLocal, TEST_USER
 
 async def create_test_notifications():
     async with TestingSessionLocal() as session:
