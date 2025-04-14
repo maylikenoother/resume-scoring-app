@@ -1,5 +1,3 @@
-// api/services/ai_service.py
-
 import httpx
 import logging
 import asyncio
