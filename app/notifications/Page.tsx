@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Box } from '@mui/material';
-import Dashboard from '@/app/components/dashboard/Dashboard';
+import NotificationList from '@/app/components/notifications/NotificationList';
 import Navbar from '@/app/components/layout/Navbar';
 
-export default function DashboardPage() {
+export default function NotificationsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
-  // Check authentication
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -27,7 +26,7 @@ export default function DashboardPage() {
   return (
     <Box>
       <Navbar />
-      <Dashboard />
+      <NotificationList />
     </Box>
   );
 }

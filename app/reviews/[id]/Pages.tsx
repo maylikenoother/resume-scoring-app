@@ -28,10 +28,9 @@ export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
   }, [router]);
 
   if (loading) {
-    return null; // or a loading spinner
+    return null;
   }
 
-  // Handle invalid ID
   if (isNaN(reviewId)) {
     return (
       <Box>

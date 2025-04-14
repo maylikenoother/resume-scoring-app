@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+from contextlib import asynccontextmanager
 
 from api.core.config import settings
 from api.core.database import engine, Base
@@ -11,16 +12,24 @@ async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-# Create database tables at startup
-asyncio.run(create_tables())
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await create_tables()
+    
+    background_task_manager = setup_background_tasks()
+    
+    yield
+    
+    if background_task_manager:
+        background_task_manager.shutdown()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API for AI-powered CV review application with credit system",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin for origin in settings.BACKEND_CORS_ORIGINS],
@@ -29,23 +38,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(reviews.router, prefix=settings.API_V1_STR)
 app.include_router(credits.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
-
-# Set up background tasks
-background_tasks = setup_background_tasks()
-
-@app.on_event("startup")
-async def startup_event():
-    pass
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if background_tasks:
-        background_tasks.shutdown()
 
 @app.get(f"{settings.API_V1_STR}/health")
 async def health_check():
