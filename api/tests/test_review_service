@@ -1,0 +1,224 @@
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+import asyncio
+from datetime import datetime
+from unittest.mock import patch, MagicMock
+
+from app.core.database import Base
+from app.models.models import User, Review, Notification
+from app.models.schemas import ReviewCreate
+from app.services.review_service import (
+    create_review,
+    get_reviews_by_user,
+    get_review_by_id,
+    generate_cv_review,
+    process_review_request
+)
+
+# Create in-memory SQLite database for testing
+TEST_SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+engine = create_engine(
+    TEST_SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+@pytest.fixture
+def db_session():
+    # Create the database tables
+    Base.metadata.create_all(bind=engine)
+    
+    # Create a session
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+    
+    # Drop the database tables
+    Base.metadata.drop_all(bind=engine)
+
+@pytest.fixture
+async def test_user(db_session):
+    # Create test user
+    user = User(
+        clerk_id="test_clerk_id",
+        email="test@example.com",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    
+    return user
+
+@pytest.mark.asyncio
+async def test_create_review(db_session, test_user):
+    # Create review data
+    review_data = ReviewCreate(
+        cv_filename="test_cv.pdf",
+        cv_content="Test CV content"
+    )
+    
+    # Create review
+    review = await create_review(db_session, review_data, test_user.clerk_id)
+    
+    # Check review was created
+    assert review is not None
+    assert review.user_id == test_user.id
+    assert review.cv_filename == "test_cv.pdf"
+    assert review.cv_content == "Test CV content"
+    assert review.status == "pending"
+    
+    # Check review exists in database
+    db_review = db_session.query(Review).filter(Review.id == review.id).first()
+    assert db_review is not None
+    
+    # Check notification was created
+    notification = db_session.query(Notification).filter(
+        Notification.user_id == test_user.id,
+        Notification.review_id == review.id
+    ).first()
+    assert notification is not None
+    assert "submitted" in notification.message
+
+@pytest.mark.asyncio
+async def test_get_reviews_by_user(db_session, test_user):
+    # Create reviews
+    for i in range(3):
+        review = Review(
+            user_id=test_user.id,
+            cv_filename=f"test_cv_{i}.pdf",
+            cv_content=f"Test CV content {i}",
+            status="completed",
+            review_content=f"Test review content {i}",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db_session.add(review)
+    db_session.commit()
+    
+    # Get user reviews
+    reviews = await get_reviews_by_user(db_session, test_user.clerk_id)
+    
+    # Check reviews were retrieved
+    assert len(reviews) == 3
+    
+@pytest.mark.asyncio
+async def test_get_reviews_by_user_nonexistent_user(db_session):
+    # Get reviews for non-existent user
+    reviews = await get_reviews_by_user(db_session, "non_existent_clerk_id")
+    
+    # Check no reviews were retrieved
+    assert len(reviews) == 0
+
+@pytest.mark.asyncio
+async def test_get_review_by_id(db_session, test_user):
+    # Create review
+    review = Review(
+        user_id=test_user.id,
+        cv_filename="test_cv.pdf",
+        cv_content="Test CV content",
+        status="completed",
+        review_content="Test review content",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db_session.add(review)
+    db_session.commit()
+    db_session.refresh(review)
+    
+    # Get review by ID
+    retrieved_review = await get_review_by_id(db_session, review.id, test_user.clerk_id)
+    
+    # Check review was retrieved
+    assert retrieved_review is not None
+    assert retrieved_review.id == review.id
+    assert retrieved_review.user_id == test_user.id
+    assert retrieved_review.cv_filename == "test_cv.pdf"
+    
+@pytest.mark.asyncio
+async def test_get_review_by_id_nonexistent_review(db_session, test_user):
+    # Get non-existent review
+    review = await get_review_by_id(db_session, 999, test_user.clerk_id)
+    
+    # Check no review was retrieved
+    assert review is None
+
+@pytest.mark.asyncio
+async def test_get_review_by_id_wrong_user(db_session, test_user):
+    # Create another user
+    other_user = User(
+        clerk_id="other_clerk_id",
+        email="other@example.com",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db_session.add(other_user)
+    db_session.commit()
+    db_session.refresh(other_user)
+    
+    # Create review for other user
+    review = Review(
+        user_id=other_user.id,
+        cv_filename="test_cv.pdf",
+        cv_content="Test CV content",
+        status="completed",
+        review_content="Test review content",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db_session.add(review)
+    db_session.commit()
+    db_session.refresh(review)
+    
+    # Try to get review as test_user
+    retrieved_review = await get_review_by_id(db_session, review.id, test_user.clerk_id)
+    
+    # Check no review was retrieved
+    assert retrieved_review is None
+
+@pytest.mark.asyncio
+async def test_generate_cv_review():
+    # Test generate CV review
+    cv_content = "Test CV content"
+    review = await generate_cv_review(cv_content)
+    
+    # Check review was generated
+    assert review is not None
+    assert len(review) > 0
+    
+@pytest.mark.asyncio
+@patch('app.services.review_service.create_notification')
+@patch('app.services.review_service.generate_cv_review')
+async def test_process_review_request(mock_generate_cv_review, mock_create_notification, db_session, test_user):
+    # Mock generate_cv_review to return a test review
+    mock_generate_cv_review.return_value = "Test review content"
+    
+    # Create review
+    review = Review(
+        user_id=test_user.id,
+        cv_filename="test_cv.pdf",
+        cv_content="Test CV content",
+        status="pending",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db_session.add(review)
+    db_session.commit()
+    db_session.refresh(review)
+    
+    # Process review request
+    await process_review_request(db_session, review.id)
+    
+    # Check review was processed
+    db_review = db_session.query(Review).filter(Review.id == review.id).first()
+    assert db_review.status == "completed"
+    assert db_review.review_content == "Test review content"
+    
+    # Check notifications were created
+    assert mock_create_notification.call_count == 2  # One for processing, one for completion

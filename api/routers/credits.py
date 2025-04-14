@@ -1,91 +1,37 @@
-from typing import Any, Dict, List
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
-from sqlmodel import Session
+from sqlalchemy.orm import Session
 
-from api.auth.dependencies import get_current_active_user
-from api.config.settings import settings
-from api.db.database import get_db
-from api.db.models import User, CreditTransaction, CreditTransactionCreate, CreditTransactionType
+from app.db.database import get_db
+from app.models.schemas import CreditUpdate
+from app.models.user import User
+from app.auth.auth import get_current_user
 
-router = APIRouter(prefix="/credits", tags=["credits"])
+router = APIRouter()
 
-
-class PurchaseCredits(BaseModel):
-    tier: str
-
-
-class CreditPricing(BaseModel):
-    amount: int
-    price: float
-
-
-@router.get("/pricing", response_model=Dict[str, CreditPricing])
-def get_credit_pricing() -> Any:
+@router.get("/balance")
+async def get_credit_balance(current_user: User = Depends(get_current_user)):
     """
-    Get credit pricing information.
-    
-    Returns:
-        Dictionary of credit pricing tiers
+    Get the current user's credit balance
     """
-    return settings.credit_pricing
+    return {"credit_balance": current_user.credit_balance}
 
-
-@router.post("/purchase", response_model=CreditTransaction)
-def purchase_credits(
-    *,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
-    purchase: PurchaseCredits,
-) -> Any:
+@router.post("/add")
+async def add_credits(
+    credit_update: CreditUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Purchase credits for the current user.
-    
-    Args:
-        db: Database session
-        current_user: Current authenticated user
-        purchase: Purchase information including the pricing tier
-        
-    Returns:
-        Created credit transaction
-        
-    Raises:
-        HTTPException: If the tier is invalid
+    Add credits to the current user's account
+    This would typically be connected to a payment system in a production environment
     """
-    # Check if the tier is valid
-    if purchase.tier not in settings.credit_pricing:
+    if credit_update.amount <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid tier. Available tiers: {', '.join(settings.credit_pricing.keys())}",
+            detail="Credit amount must be positive"
         )
     
-    # Get the tier information
-    tier_info = settings.credit_pricing[purchase.tier]
-    credit_amount = tier_info["amount"]
-    
-    # Create a credit transaction
-    transaction_create = CreditTransactionCreate(
-        amount=credit_amount,
-        type=CreditTransactionType.PURCHASE,
-        description=f"Purchased {credit_amount} credits ({purchase.tier} tier)",
-    )
-    
-    transaction = CreditTransaction(
-        user_id=current_user.id,
-        amount=transaction_create.amount,
-        type=transaction_create.type,
-        description=transaction_create.description,
-    )
-    
-    # Add the transaction to the database
-    db.add(transaction)
-    
-    # Update user's credits
-    current_user.credits += credit_amount
-    
-    # Commit changes
+    current_user.credit_balance += credit_update.amount
     db.commit()
-    db.refresh(transaction)
     
-    return transaction
+    return {"message": f"Added {credit_update.amount} credits", "new_balance": current_user.credit_balance}

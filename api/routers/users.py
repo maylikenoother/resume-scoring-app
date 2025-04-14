@@ -1,57 +1,70 @@
-from typing import Any, List
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlalchemy.orm import Session
+from typing import List
 
-from api.auth.dependencies import get_current_active_user
-from api.db.database import get_db
-from api.db.models import User, UserRead, CreditTransaction, CreditTransactionRead
+from app.core.database import get_db
+from app.core.auth import get_current_user_id
+from app.models.schemas import UserCreate, UserResponse, CreditBalanceResponse
+from app.services.user_service import create_user, get_user_by_clerk_id, get_credit_balance
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(
+    prefix="/users",
+    tags=["users"],
+    responses={404: {"description": "Not found"}},
+)
 
-
-@router.get("/me", response_model=UserRead)
-def get_current_user_info(
-    current_user: User = Depends(get_current_active_user),
-) -> Any:
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register_user(
+    user: UserCreate,
+    db: Session = Depends(get_db)
+):
     """
-    Get current user information.
+    Register a new user with Clerk authentication
+    """
+    db_user = await get_user_by_clerk_id(db, user.clerk_id)
+    if db_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already registered"
+        )
+    return await create_user(db=db, user=user)
+
+@router.get("/me", response_model=UserResponse)
+async def read_users_me(
+    clerk_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """
+    Get current user information
+    """
+    db_user = await get_user_by_clerk_id(db, clerk_id)
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return db_user
+
+@router.get("/me/credits", response_model=CreditBalanceResponse)
+async def read_user_credits(
+    clerk_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """
+    Get current user's credit balance
+    """
+    db_user = await get_user_by_clerk_id(db, clerk_id)
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
     
-    Args:
-        current_user: Current authenticated user
-        
-    Returns:
-        User information
-    """
-    return current_user
-
-
-@router.get("/me/transactions", response_model=List[CreditTransactionRead])
-def get_user_transactions(
-    *,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
-    skip: int = 0,
-    limit: int = 100,
-) -> Any:
-    """
-    Get current user's credit transactions.
+    credit_balance = await get_credit_balance(db, db_user.id)
+    if credit_balance is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Credit balance not found"
+        )
     
-    Args:
-        db: Database session
-        current_user: Current authenticated user
-        skip: Number of records to skip
-        limit: Maximum number of records to return
-        
-    Returns:
-        List of credit transactions
-    """
-    transactions = db.exec(
-        select(CreditTransaction)
-        .where(CreditTransaction.user_id == current_user.id)
-        .offset(skip)
-        .limit(limit)
-        .order_by(CreditTransaction.created_at.desc())
-    ).all()
-    
-    return transactions
+    return credit_balance

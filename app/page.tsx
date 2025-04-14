@@ -120,3 +120,136 @@ export default function Home() {
     </main>
   );
 }
+'use client';
+
+import React from 'react';
+import { Box, Typography, Paper, Button, Grid, Card, CardContent, CardActions } from '@mui/material';
+import { useRouter } from 'next/navigation';
+
+export default function Home() {
+  const router = useRouter();
+
+  return (
+    <Box sx={{ flexGrow: 1 }}>
+      {/* Hero Section */}
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          p: 4, 
+          mb: 4, 
+          borderRadius: 2,
+          background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+          color: 'white'
+        }}
+      >
+        <Typography variant="h3" component="h1" gutterBottom>
+          AI-Powered CV Review
+        </Typography>
+        <Typography variant="h6" paragraph>
+          Get professional feedback on your CV with our AI-powered review system.
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="secondary" 
+          size="large"
+          onClick={() => router.push('/auth/signup')}
+          sx={{ mr: 2 }}
+        >
+          Sign Up
+        </Button>
+        <Button 
+          variant="outlined" 
+          color="inherit" 
+          size="large"
+          onClick={() => router.push('/auth/login')}
+        >
+          Login
+        </Button>
+      </Paper>
+
+      {/* Features Section */}
+      <Typography variant="h4" component="h2" gutterBottom>
+        How It Works
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h5" component="div" gutterBottom>
+                Upload Your CV
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Upload your CV document and our system will analyze it for review.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h5" component="div" gutterBottom>
+                AI Analysis
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Our AI system analyzes your CV for structure, content, and presentation.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h5" component="div" gutterBottom>
+                Get Detailed Feedback
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Receive comprehensive feedback with specific suggestions for improvement.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Benefits Section */}
+      <Typography variant="h4" component="h2" gutterBottom>
+        Benefits
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h5" component="div" gutterBottom>
+                Professional Insights
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Get professional-level feedback on your CV structure, content, and formatting.
+              </Typography>
+            </CardContent>
+            <CardActions>
+              <Button size="small" onClick={() => router.push('/auth/signup')}>
+                Try Now
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h5" component="div" gutterBottom>
+                Improve Your Chances
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Enhance your job application success rate with a polished, professional CV.
+              </Typography>
+            </CardContent>
+            <CardActions>
+              <Button size="small" onClick={() => router.push('/auth/signup')}>
+                Get Started
+              </Button>
+            </CardActions>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}

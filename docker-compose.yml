@@ -1,0 +1,33 @@
+services:
+  backend:
+    build: ./backend
+    container_name: cv-review-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///./data/cv_review.db
+      - HUGGINGFACE_API_TOKEN=${HUGGINGFACE_API_TOKEN:-}
+      - CLERK_API_KEY=${CLERK_API_KEY:-}
+      - CLERK_JWT_PUBLIC_KEY=${CLERK_JWT_PUBLIC_KEY:-}
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: cv-review-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000/api/v1
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_data:
