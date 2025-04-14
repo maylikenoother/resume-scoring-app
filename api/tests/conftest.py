@@ -1,57 +1,84 @@
-# api/tests/conftest.py
+import asyncio
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from typing import AsyncGenerator, Generator
+
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
-from sqlmodel.pool import StaticPool
+from fastapi import Depends
 
-from api.db.models import User
-from api.core.security import get_password_hash, create_access_token
-from api.index import app
-from api.db.database import get_db
+from app.core.database import Base, get_db
+from app.core.auth import get_current_active_user
+from app.main import app
+from app.models.models import User, CreditBalance, Review, Notification
 
-# Create a test database
-TEST_DATABASE_URL = "sqlite://"  # In-memory database
+TEST_SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+test_engine = create_async_engine(
+    TEST_SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    echo=False,
+)
 
-@pytest.fixture
-def test_db():
-    engine = create_engine(
-        TEST_DATABASE_URL, 
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
-    )
-    SQLModel.metadata.create_all(engine)
+TestingSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with TestingSessionLocal() as session:
+        yield session
+
+TEST_USER = User(
+    id=1,
+    email="test@example.com",
+    full_name="Test User",
+    hashed_password="$2b$12$WtXBzbrfuKZwQCYAuhLNbOtQGZ/9pQUJmhpK8uJRJPLaqpHu0vWje",  # "password"
+    is_active=True,
+)
+
+async def override_get_current_active_user() -> User:
+    return TEST_USER
+
+@pytest.fixture(scope="session")
+def event_loop() -> Generator:
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+@pytest.fixture(scope="session")
+async def setup_test_db() -> AsyncGenerator:
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
     
-    # Create a test user
-    with Session(engine) as session:
-        test_user = User(
-            email="test@example.com",
-            username="testuser",
-            hashed_password=get_password_hash("password123"),
-            credits=10,
-            is_active=True
+    async with TestingSessionLocal() as session:
+        session.add(TEST_USER)
+        await session.commit()
+        await session.refresh(TEST_USER)
+        
+        credit_balance = CreditBalance(
+            user_id=TEST_USER.id,
+            balance=10 
         )
-        session.add(test_user)
-        session.commit()
-        session.refresh(test_user)
+        session.add(credit_balance)
+        await session.commit()
     
-    # Override the get_db dependency
-    def override_get_db():
-        with Session(engine) as session:
-            yield session
-    
+    yield
+
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+@pytest.fixture
+def client(setup_test_db) -> TestClient:
+    # Override dependencies
     app.dependency_overrides[get_db] = override_get_db
-    
-    yield engine
-    
-    # Clean up
-    SQLModel.metadata.drop_all(engine)
-    app.dependency_overrides.clear()
+    app.dependency_overrides[get_current_active_user] = override_get_current_active_user
 
-@pytest.fixture
-def client(test_db):
-    return TestClient(app)
-
-@pytest.fixture
-def auth_headers():
-    access_token = create_access_token(subject="test@example.com")
-    return {"Authorization": f"Bearer {access_token}"}
+    with TestClient(app) as c:
+        yield c
+    
+    app.dependency_overrides = {}
