@@ -13,7 +13,11 @@ import {
 } from '@mui/material';
 import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 
-export default function UploadForm({ credits = 0 }) {
+interface UploadFormProps {
+  credits: number;
+}
+
+export default function UploadForm({ credits }: UploadFormProps) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -81,13 +85,19 @@ export default function UploadForm({ credits = 0 }) {
     setError('');
 
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
       const response = await fetch('/api/py/reviews/upload', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: formData,
       });

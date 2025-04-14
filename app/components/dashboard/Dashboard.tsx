@@ -44,7 +44,7 @@ interface Notification {
   created_at: string;
 }
 
-export default function DashboardComponent() {
+export default function Dashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -327,7 +327,7 @@ export default function DashboardComponent() {
                       </ListItemIcon>
                       <ListItemText
                         primary={notification.message}
-                        secondary={`${formatDate(notification.created_at)}`}
+                        secondary={formatDate(notification.created_at)}
                       />
                     </ListItem>
                     {index < userData.notifications.length - 1 && <Divider component="li" />}

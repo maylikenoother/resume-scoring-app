@@ -2,13 +2,13 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy import select
 
-from app.core.auth import get_current_active_user
-from app.core.database import get_db
-from app.models.models import User, CreditBalance, CreditTransaction
-from app.schemas.schemas import CreditBalance as CreditBalanceSchema
-from app.schemas.schemas import CreditTransaction as CreditTransactionSchema
+from api.core.auth import get_current_active_user
+from api.core.database import get_db
+from api.models.models import User, CreditBalance, CreditTransaction
+from api.schemas.schemas import CreditBalance as CreditBalanceSchema
+from api.schemas.schemas import CreditTransaction as CreditTransactionSchema
 
 router = APIRouter(
     prefix="/credits",
@@ -77,9 +77,6 @@ async def purchase_credits(
 
 @router.get("/pricing", response_model=Dict[str, Dict[str, Any]])
 async def get_pricing_tiers() -> Any:
-    """
-    Get available pricing tiers for credit purchases
-    """
     return {
         "basic": {
             "amount": 5,
