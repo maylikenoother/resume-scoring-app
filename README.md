@@ -1,87 +1,179 @@
-<p align="center">
-  <a href="https://nextjs-fastapi-starter.vercel.app/">
-    <img src="https://assets.vercel.com/image/upload/v1588805858/repositories/vercel/logo.png" height="96">
-    <h3 align="center">Next.js FastAPI Starter</h3>
-  </a>
-</p>
+# AI-Powered CV Review Application
 
-<p align="center">Simple Next.j 14 boilerplate that uses <a href="https://fastapi.tiangolo.com/">FastAPI</a> as the API backend.</p>
+This project is an AI-powered CV review application built for the CMP9785M Cloud Development module assessment at the University of Lincoln. It demonstrates a cloud-native application with a FastAPI backend and Next.js frontend.
 
-<br/>
+## Features
 
-## Introduction
+- **User Authentication**: JWT-based authentication system
+- **Credit System**: Users can purchase and spend credits to use AI services
+- **AI Integration**: Hugging Face API integration for CV analysis
+- **Queue System**: Background processing for CV reviews
+- **Notification System**: Real-time notifications for users
+- **Responsive UI**: Clean, modern interface built with Material UI
+- **API Documentation**: Comprehensive FastAPI documentation
+- **Testing**: Unit and integration tests with pytest
+- **Cloud-Ready**: Configured for deployment to Vercel
 
-This is a hybrid Next.js 14 + Python template. One great use case of this is to write Next.js apps that use Python AI libraries on the backend, while still having the benefits of Next.js Route Handlers and Server Side Rendering.
+## Architecture
 
-## How It Works
+The application follows a cloud-native microservices architecture:
 
-The Python/FastAPI server is mapped into to Next.js app under `/api/`.
+- **Backend**: FastAPI Python application
+  - REST API endpoints
+  - JWT authentication
+  - SQLite database (can be replaced with a cloud database in production)
+  - Background task processing
+  - External AI API integration
+  
+- **Frontend**: Next.js React application
+  - Material UI components
+  - Responsive design
+  - Token-based authentication
+  - Real-time updates
 
-This is implemented using [`next.config.js` rewrites](https://github.com/digitros/nextjs-fastapi/blob/main/next.config.js) to map any request to `/api/py/:path*` to the FastAPI API, which is hosted in the `/api` folder.
+## Technology Stack
 
-Also, the app/api routes are available on the same domain, so you can use NextJs Route Handlers and make requests to `/api/...`.
+- **Backend**:
+  - FastAPI - Web framework
+  - SQLAlchemy - ORM
+  - Pydantic - Data validation
+  - JWT - Authentication
+  - pytest - Testing
+  - Hugging Face - AI integration
+  
+- **Frontend**:
+  - Next.js - React framework
+  - Material UI - Component library
+  - TypeScript - Type-safe JavaScript
+  - React Hooks - State management
 
-On localhost, the rewrite will be made to the `127.0.0.1:8000` port, which is where the FastAPI server is running.
+## Project Structure
 
-In production, the FastAPI server is hosted as [Python serverless functions](https://vercel.com/docs/concepts/functions/serverless-functions/runtimes/python) on Vercel.
-
-## Demo
-
-https://nextjs-fastapi-starter.vercel.app/
-
-## Deploy Your Own
-
-You can clone & deploy it to Vercel with one click:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdigitros%2Fnextjs-fastapi%2Ftree%2Fmain)
-
-## Developing Locally
-
-You can clone & create this repo with the following command
-
-```bash
-npx create-next-app nextjs-fastapi --example "https://github.com/digitros/nextjs-fastapi"
+```
+/
+├── api/                  # Backend API
+│   ├── core/             # Core functionality
+│   │   ├── auth.py       # Authentication
+│   │   ├── config.py     # Configuration
+│   │   └── database.py   # Database setup
+│   ├── models/           # Database models
+│   ├── routers/          # API routes
+│   ├── schemas/          # Pydantic schemas
+│   ├── services/         # Business logic
+│   └── tests/            # Unit tests
+├── app/                  # Frontend application
+│   ├── components/       # React components
+│   ├── (app)/            # Protected routes
+│   ├── (auth)/           # Authentication routes
+│   └── theme.ts          # Theme configuration
+├── README.md             # Project documentation
+└── package.json          # Frontend dependencies
 ```
 
-## Getting Started
+## Setup and Installation
 
-First, create and activate a virtual environment:
+### Prerequisites
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
+- Python 3.9+
+- Node.js 18+
+- npm or yarn
+
+### Backend Setup
+
+1. Navigate to the API directory:
+   ```
+   cd api
+   ```
+
+2. Create a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Create a `.env` file with your configuration:
+   ```
+   HUGGINGFACE_API_TOKEN=your_token_here
+   SECRET_KEY=your_secret_key
+   ```
+
+5. Run the backend server:
+   ```
+   uvicorn main:app --reload
+   ```
+
+6. The API will be available at http://localhost:8000
+   - API documentation: http://localhost:8000/docs
+
+### Frontend Setup
+
+1. Navigate to the root directory and install dependencies:
+   ```
+   npm install
+   # or
+   yarn install
+   ```
+
+2. Run the development server:
+   ```
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+3. The frontend will be available at http://localhost:3000
+
+## API Documentation
+
+The API documentation is available at the `/api/py/docs` endpoint when the server is running. It provides comprehensive information about all available endpoints, request/response models, and authentication requirements.
+
+## Testing
+
+To run the tests:
+
+```
+cd api
+pytest
 ```
 
-Then, install the dependencies:
+## Deployment
 
-```bash
-npm install
-# or
-yarn
-# or
-pnpm install
-```
+The application is configured for deployment to Vercel:
 
-Then, run the development server(python dependencies will be installed automatically here):
+1. Create a new Vercel project
+2. Link your GitHub repository
+3. Configure the following environment variables:
+   - `HUGGINGFACE_API_TOKEN`: Your Hugging Face API token
+   - `SECRET_KEY`: A secure random string for JWT encryption
+4. Deploy!
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+## Assessment Criteria Fulfillment
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+This project meets the assessment criteria in the following ways:
 
-The FastApi server will be running on [http://127.0.0.1:8000](http://127.0.0.1:8000) – feel free to change the port in `package.json` (you'll also need to update it in `next.config.js`).
+1. **Cloud-Native Application Design**:
+   - Microservices architecture
+   - Stateless authentication
+   - External service integration
+   - Container-ready structure
 
-## Learn More
+2. **Secure, Scalable Cloud-Native Application**:
+   - JWT authentication
+   - Input validation
+   - Separation of concerns
+   - Scalable background processing
 
-To learn more about Next.js, take a look at the following resources:
+3. **DevOps Practices**:
+   - Comprehensive testing
+   - CI/CD compatibility
+   - Clear documentation
+   - Containerization support
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [FastAPI Documentation](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.

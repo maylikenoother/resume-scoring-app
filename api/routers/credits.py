@@ -1,91 +1,122 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
-from sqlmodel import Session
+from fastapi import APIRouter, Depends, HTTPException, status, Body
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
-from api.auth.dependencies import get_current_active_user
-from api.config.settings import settings
-from api.db.database import get_db
-from api.db.models import User, CreditTransaction, CreditTransactionCreate, CreditTransactionType
+from app.core.auth import get_current_active_user
+from app.core.database import get_db
+from app.models.models import User, CreditBalance, CreditTransaction
+from app.schemas.schemas import CreditBalance as CreditBalanceSchema
+from app.schemas.schemas import CreditTransaction as CreditTransactionSchema
 
-router = APIRouter(prefix="/credits", tags=["credits"])
+router = APIRouter(
+    prefix="/credits",
+    tags=["credits"],
+    responses={401: {"description": "Unauthorized"}},
+)
 
-
-class PurchaseCredits(BaseModel):
-    tier: str
-
-
-class CreditPricing(BaseModel):
-    amount: int
-    price: float
-
-
-@router.get("/pricing", response_model=Dict[str, CreditPricing])
-def get_credit_pricing() -> Any:
-    """
-    Get credit pricing information.
-    
-    Returns:
-        Dictionary of credit pricing tiers
-    """
-    return settings.credit_pricing
-
-
-@router.post("/purchase", response_model=CreditTransaction)
-def purchase_credits(
-    *,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
-    purchase: PurchaseCredits,
+@router.get("/balance", response_model=CreditBalanceSchema)
+async def get_credit_balance(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ) -> Any:
-    """
-    Purchase credits for the current user.
+    result = await db.execute(
+        select(CreditBalance).where(CreditBalance.user_id == current_user.id)
+    )
+    credit_balance = result.scalars().first()
     
-    Args:
-        db: Database session
-        current_user: Current authenticated user
-        purchase: Purchase information including the pricing tier
-        
-    Returns:
-        Created credit transaction
-        
-    Raises:
-        HTTPException: If the tier is invalid
-    """
-    # Check if the tier is valid
-    if purchase.tier not in settings.credit_pricing:
+    if not credit_balance:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid tier. Available tiers: {', '.join(settings.credit_pricing.keys())}",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Credit balance not found",
         )
     
-    # Get the tier information
-    tier_info = settings.credit_pricing[purchase.tier]
-    credit_amount = tier_info["amount"]
-    
-    # Create a credit transaction
-    transaction_create = CreditTransactionCreate(
-        amount=credit_amount,
-        type=CreditTransactionType.PURCHASE,
-        description=f"Purchased {credit_amount} credits ({purchase.tier} tier)",
+    return credit_balance
+
+@router.post("/purchase", response_model=CreditTransactionSchema)
+async def purchase_credits(
+    credit_amount: int = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> Any:
+    if credit_amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Credit amount must be positive",
+        )
+
+    result = await db.execute(
+        select(CreditBalance).where(CreditBalance.user_id == current_user.id)
     )
+    credit_balance = result.scalars().first()
+    
+    if not credit_balance:
+        credit_balance = CreditBalance(
+            user_id=current_user.id,
+            balance=0
+        )
+        db.add(credit_balance)
+        await db.commit()
+        await db.refresh(credit_balance)
+    
+    credit_balance.balance += credit_amount
     
     transaction = CreditTransaction(
-        user_id=current_user.id,
-        amount=transaction_create.amount,
-        type=transaction_create.type,
-        description=transaction_create.description,
+        credit_balance_id=credit_balance.id,
+        amount=credit_amount,
+        description=f"Purchased {credit_amount} credits",
+        transaction_type="purchase"
     )
-    
-    # Add the transaction to the database
     db.add(transaction)
     
-    # Update user's credits
-    current_user.credits += credit_amount
-    
-    # Commit changes
-    db.commit()
-    db.refresh(transaction)
+    await db.commit()
+    await db.refresh(transaction)
     
     return transaction
+
+@router.get("/pricing", response_model=Dict[str, Dict[str, Any]])
+async def get_pricing_tiers() -> Any:
+    """
+    Get available pricing tiers for credit purchases
+    """
+    return {
+        "basic": {
+            "amount": 5,
+            "price": 4.99
+        },
+        "standard": {
+            "amount": 15,
+            "price": 9.99
+        },
+        "premium": {
+            "amount": 50,
+            "price": 24.99
+        }
+    }
+
+@router.get("/transactions", response_model=list[CreditTransactionSchema])
+async def get_transactions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    skip: int = 0,
+    limit: int = 100
+) -> Any:
+    result = await db.execute(
+        select(CreditBalance).where(CreditBalance.user_id == current_user.id)
+    )
+    credit_balance = result.scalars().first()
+    
+    if not credit_balance:
+        return []
+
+    result = await db.execute(
+        select(CreditTransaction)
+        .where(CreditTransaction.credit_balance_id == credit_balance.id)
+        .order_by(CreditTransaction.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    
+    transactions = result.scalars().all()
+    return transactions
