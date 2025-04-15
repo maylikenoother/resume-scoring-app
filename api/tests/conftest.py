@@ -10,7 +10,7 @@ from fastapi import Depends
 
 from api.core.database import Base, get_db
 from api.core.auth import get_current_active_user
-from api.index import app
+from api.main import app
 from api.models.models import User, CreditBalance
 
 TEST_SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

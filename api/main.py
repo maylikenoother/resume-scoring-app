@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 from contextlib import asynccontextmanager
 
-from core.config import settings
-from core.database import engine, Base
-from routers import auth, reviews, credits, notifications
-from services.background_tasks import setup_background_tasks
+from api.core.config import settings
+from api.core.database import engine, Base
+from api.routers import auth, reviews, credits, notifications
+from api.services.background_tasks import setup_background_tasks
 
 async def create_tables():
     async with engine.begin() as conn:
