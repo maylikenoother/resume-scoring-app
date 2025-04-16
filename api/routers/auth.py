@@ -4,12 +4,14 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from api.core.auth import (
     authenticate_user,
     create_access_token,
     get_password_hash,
     get_current_active_user,
+    get_user_by_email
 )
 from api.core.config import settings
 from api.core.database import get_db
@@ -45,11 +47,8 @@ async def register_new_user(
     user_in: UserCreate,
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    user = await db.execute(
-        "SELECT id FROM users WHERE email = :email",
-        {"email": user_in.email}
-    )
-    if user.scalars().first():
+    existing_user = await get_user_by_email(db, user_in.email)
+    if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists",

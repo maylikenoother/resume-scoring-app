@@ -1,82 +1,64 @@
-from datetime import timedelta
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from sqlalchemy import select
 
-from api.core.auth import (
-    authenticate_user,
-    create_access_token,
-    get_password_hash,
-    get_current_active_user,
-)
 from api.core.config import settings
+from api.models.models import User
+from api.schemas.schemas import TokenData
 from api.core.database import get_db
-from api.models.models import User, CreditBalance
-from api.schemas.schemas import Token, UserCreate, User as UserSchema
 
-router = APIRouter(
-    prefix="/auth",
-    tags=["authentication"],
-    responses={401: {"description": "Unauthorized"}},
-)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
-@router.post("/login", response_model=Token)
-async def login_for_access_token(
-    db: AsyncSession = Depends(get_db),
-    form_data: OAuth2PasswordRequestForm = Depends(),
-) -> Any:
-    user = await authenticate_user(db, form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalars().first()
+
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
+    user = await get_user_by_email(db, email)
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+async def get_current_user(db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
-async def register_new_user(
-    user_in: UserCreate,
-    db: AsyncSession = Depends(get_db),
-) -> Any:
-    # Use SQLAlchemy's ORM approach instead of raw SQL
-    result = await db.execute(
-        select(User).where(User.email == user_in.email)
-    )
-    if result.scalars().first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists",
-        )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
     
-    hashed_password = get_password_hash(user_in.password)
-    new_user = User(
-        email=user_in.email,
-        full_name=user_in.full_name,
-        hashed_password=hashed_password
-    )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+    user = await get_user_by_email(db, email=token_data.email)
+    if user is None:
+        raise credentials_exception
+    return user
 
-    credit_balance = CreditBalance(
-        user_id=new_user.id,
-        balance=settings.DEFAULT_CREDITS
-    )
-    db.add(credit_balance)
-    await db.commit()
-    
-    return new_user
-
-@router.get("/me", response_model=UserSchema)
-async def read_users_me(
-    current_user: User = Depends(get_current_active_user),
-) -> Any:
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
