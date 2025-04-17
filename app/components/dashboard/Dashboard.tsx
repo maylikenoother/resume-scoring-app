@@ -26,6 +26,7 @@ import {
   Error as ErrorIcon,
   Notifications as NotificationsIcon,
 } from '@mui/icons-material';
+import { fetchWithAuth, isAuthenticated } from '@/app/utils/auth';
 
 interface Review {
   id: number;
@@ -59,46 +60,65 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
+    // Check authentication first
+    if (!isAuthenticated()) {
+      router.push('/login');
+      return;
+    }
+
     fetchDashboardData();
-  }, []);
+  }, [router]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      setError('');
       
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-
-      const [creditsRes, reviewsRes, notificationsRes] = await Promise.all([
-        fetch('/api/py/credits/balance', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('/api/py/reviews/?limit=5', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('/api/py/notifications/?limit=5', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+      // Use Promise.allSettled instead of Promise.all to prevent one failing request
+      // from canceling all requests
+      const [creditsRes, reviewsRes, notificationsRes] = await Promise.allSettled([
+        fetchWithAuth('/api/py/credits/balance'),
+        fetchWithAuth('/api/py/reviews/?limit=5'),
+        fetchWithAuth('/api/py/notifications/?limit=5')
       ]);
-
-      if (!creditsRes.ok || !reviewsRes.ok || !notificationsRes.ok) {
-        throw new Error('Failed to fetch dashboard data');
+      
+      // Process credits response
+      let credits = 0;
+      if (creditsRes.status === 'fulfilled' && creditsRes.value.ok) {
+        const creditsData = await creditsRes.value.json();
+        credits = creditsData.balance;
+      } else {
+        console.error('Failed to fetch credits:', 
+          creditsRes.status === 'rejected' ? creditsRes.reason : await creditsRes.value.text());
       }
-
-      const creditsData = await creditsRes.json();
-      const reviewsData = await reviewsRes.json();
-      const notificationsData = await notificationsRes.json();
-
+      
+      // Process reviews response
+      let reviews = [];
+      if (reviewsRes.status === 'fulfilled' && reviewsRes.value.ok) {
+        const reviewsData = await reviewsRes.value.json();
+        reviews = reviewsData.reviews || [];
+      } else {
+        console.error('Failed to fetch reviews:', 
+          reviewsRes.status === 'rejected' ? reviewsRes.reason : await reviewsRes.value.text());
+      }
+      
+      // Process notifications response
+      let notifications = [];
+      if (notificationsRes.status === 'fulfilled' && notificationsRes.value.ok) {
+        const notificationsData = await notificationsRes.value.json();
+        notifications = notificationsData.notifications || [];
+      } else {
+        console.error('Failed to fetch notifications:', 
+          notificationsRes.status === 'rejected' ? notificationsRes.reason : await notificationsRes.value.text());
+      }
+      
       setUserData({
-        credits: creditsData.balance,
-        reviews: reviewsData.reviews || [],
-        notifications: notificationsData.notifications || [],
+        credits,
+        reviews,
+        notifications,
       });
     } catch (err: any) {
-      setError(err.message || 'An error occurred while loading dashboard data');
+      setError('An error occurred while loading dashboard data. Please try again.');
       console.error('Dashboard error:', err);
     } finally {
       setLoading(false);
