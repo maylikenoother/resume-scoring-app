@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   Box,
   Container,
@@ -21,6 +22,7 @@ import {
   Notifications as NotificationsIcon,
   MarkEmailRead as MarkEmailReadIcon,
 } from '@mui/icons-material';
+import { fetchWithAuth } from '@/app/utils/fetch-with-auth';
 
 interface Notification {
   id: number;
@@ -33,38 +35,47 @@ interface Notification {
 
 export default function NotificationList() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [markingAll, setMarkingAll] = useState(false);
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    if (status === 'authenticated') {
+      fetchNotifications();
+    }
+  }, [status]);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      
+      let token = session?.accessToken;
+      if (!token && typeof window !== 'undefined') {
+        token = localStorage.getItem('token') || undefined;
+      }
       
       if (!token) {
         router.push('/login');
         return;
       }
 
-      const response = await fetch('/api/py/notifications/', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch('/api/py/notifications', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
+        throw new Error(`Failed to fetch notifications: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Notifications data:', data);
       setNotifications(data.notifications || []);
     } catch (err: any) {
+      console.error('Error fetching notifications:', err);
       setError(err.message || 'An error occurred while loading notifications');
-      console.error('Notifications error:', err);
     } finally {
       setLoading(false);
     }
@@ -72,7 +83,10 @@ export default function NotificationList() {
 
   const markAsRead = async (notificationId: number) => {
     try {
-      const token = localStorage.getItem('token');
+      let token = session?.accessToken;
+      if (!token && typeof window !== 'undefined') {
+        token = localStorage.getItem('token') || undefined;
+      }
       
       if (!token) {
         router.push('/login');
@@ -100,7 +114,11 @@ export default function NotificationList() {
   const markAllAsRead = async () => {
     try {
       setMarkingAll(true);
-      const token = localStorage.getItem('token');
+      
+      let token = session?.accessToken;
+      if (!token && typeof window !== 'undefined') {
+       token = localStorage.getItem('token') || undefined;
+      }
       
       if (!token) {
         router.push('/login');
@@ -146,12 +164,17 @@ export default function NotificationList() {
     }
   };
 
-  if (loading) {
+  if (status === 'loading' || loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
         <CircularProgress />
       </Box>
     );
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
   }
 
   const unreadCount = notifications.filter(notification => !notification.is_read).length;

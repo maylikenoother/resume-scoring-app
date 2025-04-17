@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   Box,
   Paper,
@@ -41,14 +42,19 @@ interface Review {
 
 export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [review, setReview] = useState<Review | null>(null);
   const [polling, setPolling] = useState(false);
 
   useEffect(() => {
-    fetchReviewData();
-  }, [reviewId]);
+    if (status === 'authenticated') {
+      fetchReviewData();
+    } else if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [reviewId, status]);
 
   useEffect(() => {
     if (review?.status === 'processing' && !polling) {
@@ -69,26 +75,32 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
       if (showLoading) {
         setLoading(true);
       }
+ 
+      let token = session?.accessToken;
+      if (!token && typeof window !== 'undefined') {
+        token = localStorage.getItem('token') || undefined;
+      }
       
-      const token = localStorage.getItem('token');
       if (!token) {
         router.push('/login');
         return;
       }
 
       const response = await fetch(`/api/py/reviews/${reviewId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch review data');
+        throw new Error(`Failed to fetch review data: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Review detail data:', data);
       setReview(data);
     } catch (err: any) {
+      console.error('Review detail error:', err);
       setError(err.message || 'An error occurred while loading review data');
-      console.error('Review error:', err);
     } finally {
       setLoading(false);
     }
@@ -130,12 +142,17 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
     }
   };
 
-  if (loading) {
+  if (status === 'loading' || loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
         <CircularProgress />
       </Box>
     );
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
   }
 
   if (error) {

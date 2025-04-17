@@ -87,6 +87,7 @@ export const authOptions: NextAuthOptions = {
                 provider: account.provider,
                 oauth_id: user.id,
               }),
+              cache: 'no-store',
             });
             
             if (response.ok) {

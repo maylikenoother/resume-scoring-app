@@ -11,7 +11,6 @@ export async function GET(
 
   const headers = new Headers();
   
-  // First try to get token from NextAuth
   const token = await getToken({ req: request });
   
   if (token?.accessToken) {
@@ -66,7 +65,7 @@ export async function POST(
     headers.set('Content-Type', contentType);
   }
   
-  // First try to get token from NextAuth
+  // Get token from NextAuth
   const token = await getToken({ req: request });
   
   if (token?.accessToken) {
@@ -164,15 +163,14 @@ export async function PUT(
     headers.set('Content-Type', 'application/json');
   }
   
-  // First try to get token from NextAuth
-  const token = await getToken({ req: request });
-  
-  if (token?.accessToken) {
-    headers.set('Authorization', `Bearer ${token.accessToken}`);
-    console.log(`Using NextAuth token for PUT request to ${url}`);
-  } else {
-    console.warn(`No NextAuth token for PUT request to ${url}`);
-  }
+const token = await getToken({ req: request });
+
+if (token?.accessToken) {
+  headers.set('Authorization', `Bearer ${token.accessToken}`);
+  console.log(`Using NextAuth token for PUT request to ${url}`);
+} else {
+  console.warn(`No NextAuth token for PUT request to ${url}`);
+}
   
   try {
     console.log(`Proxying PUT request to: ${url}`);
@@ -187,6 +185,7 @@ export async function PUT(
       method: 'PUT',
       headers,
       body: typeof body === 'string' ? body : JSON.stringify(body),
+      cache: 'no-store',
     });
     
     if (!response.ok) {

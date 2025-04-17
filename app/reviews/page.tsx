@@ -1,10 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Container, Typography, Paper, List, ListItem, ListItemText, ListItemIcon, Divider, Chip, Button, CircularProgress, Alert } from '@mui/material';
+import { useSession } from 'next-auth/react';
+import { 
+  Box, 
+  Container, 
+  Typography, 
+  Paper, 
+  List, 
+  ListItem, 
+  ListItemText, 
+  ListItemIcon, 
+  Divider, 
+  Chip, 
+  Button, 
+  CircularProgress, 
+  Alert 
+} from '@mui/material';
 import Navbar from '@/app/components/layout/Navbar';
-import { CloudUpload as CloudUploadIcon, AccessTime as AccessTimeIcon, CheckCircle as CheckCircleIcon, Error as ErrorIcon } from '@mui/icons-material';
+import { 
+  CloudUpload as CloudUploadIcon, 
+  AccessTime as AccessTimeIcon, 
+  CheckCircle as CheckCircleIcon, 
+  Error as ErrorIcon 
+} from '@mui/icons-material';
 
 interface Review {
   id: number;
@@ -15,33 +35,48 @@ interface Review {
 
 export default function ReviewsPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (status === 'authenticated') {
+      fetchReviews();
+    } else if (status === 'unauthenticated') {
       router.push('/login');
-      return;
     }
+  }, [status, router]);
 
-    fetchReviews(token);
-  }, [router]);
-
-  const fetchReviews = async (token: string) => {
+  const fetchReviews = async () => {
     try {
-      const response = await fetch('/api/py/reviews/', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      setLoading(true);
+      setError('');
+
+      let token = session?.accessToken;
+      if (!token && typeof window !== 'undefined') {
+        token = localStorage.getItem('token') || undefined;
+      }
+      
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      
+      const response = await fetch('/api/py/reviews', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch reviews');
+        throw new Error(`Failed to fetch reviews: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Reviews data:', data);
       setReviews(data.reviews || []);
     } catch (err: any) {
+      console.error('Error fetching reviews:', err);
       setError(err.message || 'Failed to load reviews');
     } finally {
       setLoading(false);
@@ -82,7 +117,7 @@ export default function ReviewsPage() {
     }
   };
 
-  if (loading) {
+  if (status === 'loading' || loading) {
     return (
       <Box>
         <Navbar />
@@ -93,6 +128,11 @@ export default function ReviewsPage() {
         </Container>
       </Box>
     );
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
   }
 
   return (
@@ -122,7 +162,7 @@ export default function ReviewsPage() {
           {reviews.length > 0 ? (
             <List>
               {reviews.map((review, index) => (
-                <div key={review.id}>
+                <React.Fragment key={review.id}>
                   <ListItem
                     button
                     onClick={() => router.push(`/reviews/${review.id}`)}
@@ -141,7 +181,7 @@ export default function ReviewsPage() {
                     />
                   </ListItem>
                   {index < reviews.length - 1 && <Divider />}
-                </div>
+                </React.Fragment>
               ))}
             </List>
           ) : (
