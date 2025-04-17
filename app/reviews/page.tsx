@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useAuth } from "@clerk/nextjs";
 import { 
   Box, 
   Container, 
@@ -35,36 +35,27 @@ interface Review {
 
 export default function ReviewsPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { isLoaded, isSignedIn } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetchReviews();
-    } else if (status === 'unauthenticated') {
-      router.push('/login');
+    if (isLoaded) {
+      if (isSignedIn) {
+        fetchReviews();
+      } else {
+        router.push('/login');
+      }
     }
-  }, [status, router]);
+  }, [isLoaded, isSignedIn, router]);
 
   const fetchReviews = async () => {
     try {
       setLoading(true);
       setError('');
-
-      let token = session?.accessToken;
-      if (!token && typeof window !== 'undefined') {
-        token = localStorage.getItem('token') || undefined;
-      }
-      
-      if (!token) {
-        router.push('/login');
-        return;
-      }
       
       const response = await fetch('/api/py/reviews', {
-        headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
 
@@ -117,7 +108,7 @@ export default function ReviewsPage() {
     }
   };
 
-  if (status === 'loading' || loading) {
+  if (!isLoaded || loading) {
     return (
       <Box>
         <Navbar />
@@ -128,11 +119,6 @@ export default function ReviewsPage() {
         </Container>
       </Box>
     );
-  }
-
-  if (status === 'unauthenticated') {
-    router.push('/login');
-    return null;
   }
 
   return (

@@ -1,25 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from "@clerk/nextjs";
 import { Box } from '@mui/material';
 import NotificationList from '@/app/components/notifications/NotificationList';
 import Navbar from '@/app/components/layout/Navbar';
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { isLoaded, isSignedIn } = useAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (isLoaded && !isSignedIn) {
       router.push('/login');
-    } else {
-      setLoading(false);
     }
-  }, [router]);
+  }, [isLoaded, isSignedIn, router]);
 
-  if (loading) {
+  if (!isLoaded) {
     return null;
   }
 

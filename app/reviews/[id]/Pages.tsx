@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { Box, Container, CircularProgress, Alert } from '@mui/material';
+import { useAuth } from "@clerk/nextjs";
+import { Box, Container, Alert } from '@mui/material';
 import ReviewDetail from '@/app/components/cv/ReviewDetail';
 import Navbar from '@/app/components/layout/Navbar';
 
@@ -15,29 +15,17 @@ interface ReviewDetailPageProps {
 
 export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
   const router = useRouter();
-  const { status } = useSession();
-  const [loading, setLoading] = useState(true);
+  const { isLoaded, isSignedIn } = useAuth();
   const reviewId = parseInt(params.id);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      setLoading(false);
-    } else if (status === 'unauthenticated') {
+    if (isLoaded && !isSignedIn) {
       router.push('/login');
     }
-  }, [status, router]);
+  }, [isLoaded, isSignedIn, router]);
 
-  if (status === 'loading' || loading) {
-    return (
-      <Box>
-        <Navbar />
-        <Container>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
-            <CircularProgress />
-          </Box>
-        </Container>
-      </Box>
-    );
+  if (!isLoaded) {
+    return null;
   }
 
   if (isNaN(reviewId)) {

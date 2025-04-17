@@ -1,3 +1,4 @@
+// app/components/cv/UploadForm.tsx
 'use client';
 
 import { useState } from 'react';
@@ -85,20 +86,11 @@ export default function UploadForm({ credits }: UploadFormProps) {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-
       const formData = new FormData();
       formData.append('file', file);
 
       const response = await fetch('/api/py/reviews/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         body: formData,
       });
 

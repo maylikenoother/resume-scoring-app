@@ -72,23 +72,11 @@ export default function CreditManager() {
   const fetchCreditData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        router.push('/login');
-        return;
-      }
 
       const [balanceRes, transactionsRes, pricingRes] = await Promise.all([
-        fetch('/api/py/credits/balance', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('/api/py/credits/transactions', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('/api/py/credits/pricing', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetch('/api/py/credits/balance'),
+        fetch('/api/py/credits/transactions'),
+        fetch('/api/py/credits/pricing')
       ]);
 
       if (!balanceRes.ok || !transactionsRes.ok || !pricingRes.ok) {
@@ -113,17 +101,10 @@ export default function CreditManager() {
   const handlePurchaseCredits = async (tier: string) => {
     try {
       setPurchasing(tier);
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        router.push('/login');
-        return;
-      }
 
       const response = await fetch('/api/py/credits/purchase', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ credit_amount: pricingTiers?.[tier as keyof PricingTiers]?.amount || 0 })

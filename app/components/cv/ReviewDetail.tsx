@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useAuth } from "@clerk/nextjs";
 import {
   Box,
   Paper,
@@ -42,19 +42,21 @@ interface Review {
 
 export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { isLoaded, isSignedIn } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [review, setReview] = useState<Review | null>(null);
   const [polling, setPolling] = useState(false);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetchReviewData();
-    } else if (status === 'unauthenticated') {
-      router.push('/login');
+    if (isLoaded) {
+      if (isSignedIn) {
+        fetchReviewData();
+      } else {
+        router.push('/login');
+      }
     }
-  }, [reviewId, status]);
+  }, [reviewId, isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (review?.status === 'processing' && !polling) {
@@ -75,19 +77,8 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
       if (showLoading) {
         setLoading(true);
       }
- 
-      let token = session?.accessToken;
-      if (!token && typeof window !== 'undefined') {
-        token = localStorage.getItem('token') || undefined;
-      }
-      
-      if (!token) {
-        router.push('/login');
-        return;
-      }
 
       const response = await fetch(`/api/py/reviews/${reviewId}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
         cache: 'no-store'
       });
 
@@ -142,7 +133,7 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
     }
   };
 
-  if (status === 'loading' || loading) {
+  if (!isLoaded || loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
         <CircularProgress />
@@ -150,8 +141,7 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
     );
   }
 
-  if (status === 'unauthenticated') {
-    router.push('/login');
+  if (!isSignedIn) {
     return null;
   }
 
