@@ -14,10 +14,11 @@ export async function GET(
     const response = await fetch(url, {
       headers,
       method: 'GET',
+      cache: 'no-store',
     });
     
-    const data = await response.json();
-    return NextResponse.json(data);
+    const data = await response.json().catch(() => ({}));
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('API proxy error:', error);
     return NextResponse.json({ error: 'Failed to fetch data from API' }, { status: 500 });
@@ -33,24 +34,56 @@ export async function POST(
   const url = `${apiBaseUrl}/api/py/${path}`;
   
   const headers = new Headers(request.headers);
-  const contentType = headers.get('content-type');
-  let body;
-  
-  if (contentType && contentType.includes('multipart/form-data')) {
-    body = await request.formData();
-  } else {
-    body = await request.json();
-  }
+  const contentType = headers.get('content-type') || '';
   
   try {
-    const response = await fetch(url, {
-      headers,
-      method: 'POST',
-      body: typeof body === 'string' ? body : JSON.stringify(body),
-    });
+    let response;
     
-    const data = await response.json();
-    return NextResponse.json(data);
+    if (contentType.includes('multipart/form-data')) {
+      // Handle multipart form data (file uploads)
+      const formData = await request.formData();
+      response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: formData,
+      });
+    } else {
+      // Handle JSON data
+      let body;
+      try {
+        body = await request.json();
+      } catch (e) {
+        // If JSON parsing fails, try to get form data or text
+        if (contentType.includes('application/x-www-form-urlencoded')) {
+          body = await request.formData();
+        } else {
+          body = await request.text();
+        }
+      }
+      
+      if (body instanceof FormData) {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: body,
+        });
+      } else if (typeof body === 'string') {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: body,
+        });
+      } else {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(body),
+        });
+      }
+    }
+    
+    const data = await response.json().catch(() => ({}));
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('API proxy error:', error);
     return NextResponse.json({ error: 'Failed to send data to API' }, { status: 500 });
@@ -75,8 +108,8 @@ export async function PUT(
       body: JSON.stringify(body),
     });
     
-    const data = await response.json();
-    return NextResponse.json(data);
+    const data = await response.json().catch(() => ({}));
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('API proxy error:', error);
     return NextResponse.json({ error: 'Failed to update data in API' }, { status: 500 });

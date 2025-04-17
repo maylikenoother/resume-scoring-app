@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, TextField, Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { setAuthToken } from '@/app/utils/auth';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -34,7 +35,8 @@ export default function LoginForm() {
 
       const data = await response.json();
       
-      localStorage.setItem('token', data.access_token);
+      // Use the utility function to set tokens
+      setAuthToken(data.access_token);
 
       router.push('/dashboard');
     } catch (err: any) {
