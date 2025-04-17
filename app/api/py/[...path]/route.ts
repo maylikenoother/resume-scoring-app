@@ -11,6 +11,7 @@ export async function GET(
 
   const headers = new Headers();
   
+  // First try to get token from NextAuth
   const token = await getToken({ req: request });
   
   if (token?.accessToken) {
@@ -65,6 +66,7 @@ export async function POST(
     headers.set('Content-Type', contentType);
   }
   
+  // First try to get token from NextAuth
   const token = await getToken({ req: request });
   
   if (token?.accessToken) {
@@ -162,6 +164,7 @@ export async function PUT(
     headers.set('Content-Type', 'application/json');
   }
   
+  // First try to get token from NextAuth
   const token = await getToken({ req: request });
   
   if (token?.accessToken) {

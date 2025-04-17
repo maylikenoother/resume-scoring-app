@@ -72,10 +72,20 @@ export default function Dashboard() {
       setLoading(true);
       setError('');
 
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+
       const [creditsRes, reviewsRes, notificationsRes] = await Promise.allSettled([
-        fetch('/api/py/credits/balance'),
-        fetch('/api/py/reviews?limit=5'),
-        fetch('/api/py/notifications?limit=5')
+        fetch('/api/py/credits/balance', { headers }),
+        fetch('/api/py/reviews/?limit=5', { headers }),
+        fetch('/api/py/notifications/?limit=5', { headers })
       ]);
       
       let credits = 0;

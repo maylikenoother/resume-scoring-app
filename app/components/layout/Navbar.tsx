@@ -42,22 +42,29 @@ export default function Navbar() {
   useEffect(() => {
     if (status === 'authenticated') {
       setIsLoggedIn(true);
-      fetchUserData();
+      if (session?.accessToken) {
+        localStorage.setItem('token', session.accessToken);
+        fetchUserData();
+      }
     } else if (status === 'unauthenticated') {
       setIsLoggedIn(false);
+      localStorage.removeItem('token');
     }
     setLoading(status === 'loading');
-  }, [status]);
+  }, [status, session]);
 
   const fetchUserData = async () => {
     try {
-      if (!session?.accessToken) return;
+      const token = session?.accessToken || localStorage.getItem('token');
+      if (!token) return;
+      
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
       
       try {
         const balanceResponse = await fetch('/api/py/credits/balance', {
-          headers: {
-            'Authorization': `Bearer ${session.accessToken}`
-          },
+          headers,
           cache: 'no-store'
         });
         
@@ -73,9 +80,7 @@ export default function Navbar() {
       
       try {
         const notifResponse = await fetch('/api/py/notifications/unread-count', {
-          headers: {
-            'Authorization': `Bearer ${session.accessToken}`
-          },
+          headers,
           cache: 'no-store'
         });
         
