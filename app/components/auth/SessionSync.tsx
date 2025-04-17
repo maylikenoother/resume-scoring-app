@@ -1,12 +1,10 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
-import { Box } from '@mui/material';
+import { useEffect } from 'react';
 
 export default function SessionSync() {
   const { data: session, status } = useSession();
-  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (status === 'authenticated' && session?.accessToken) {

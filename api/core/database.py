@@ -1,6 +1,11 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from api.core.config import settings
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 engine = create_async_engine(
     settings.DATABASE_URL, 
@@ -25,3 +30,7 @@ async def get_db() -> AsyncSession:
             yield session
         finally:
             await session.close()
+
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

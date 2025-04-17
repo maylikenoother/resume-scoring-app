@@ -1,12 +1,6 @@
-import { getSession } from "next-auth/react";
-
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const session = await getSession();
-  let token = session?.accessToken;
 
-  if (!token && typeof window !== 'undefined') {
-    token = localStorage.getItem('token') ?? undefined;
-  }
+  let token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
   if (!token) {
     console.error('No authentication token found');
@@ -20,7 +14,6 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
     const response = await fetch(url, {
       ...options,
       headers,
-      cache: 'no-store',
     });
     
     if (response.status === 401) {
