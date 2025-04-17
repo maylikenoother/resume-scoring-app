@@ -1,48 +1,57 @@
-import { signIn, signOut } from 'next-auth/react';
+import { getSession, signOut } from "next-auth/react";
 
-export const setAuthToken = async (token: string) => {
-  localStorage.setItem('token', token);
+export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+  const session = await getSession();
+  
+  if (!session?.accessToken) {
+    throw new Error('No authentication token found');
+  }
+
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${session.accessToken}`);
+  
+  try {
+    return await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    console.error(`Auth fetch error for ${url}:`, error);
+    throw error;
+  }
 };
 
-export const removeAuthToken = async () => {
-  localStorage.removeItem('token');
-  await signOut({ redirect: false });
+export const isAuthenticated = async () => {
+  const session = await getSession();
+  return !!session;
 };
 
-export const getAuthToken = () => {
-  return localStorage.getItem('token');
+export const logOut = () => {
+  signOut({ callbackUrl: '/login' });
 };
 
-export const isAuthenticated = () => {
-  const token = getAuthToken();
-  return !!token;
+export const setAuthToken = () => {
+  console.warn("setAuthToken is deprecated with NextAuth - tokens are managed automatically");
 };
 
-export const getAuthHeaders = () => {
-  const token = getAuthToken();
+export const removeAuthToken = () => {
+  logOut();
+};
+
+export const getAuthToken = async () => {
+  const session = await getSession();
+  return session?.accessToken || null;
+};
+
+export const getAuthHeaders = async () => {
+  const session = await getSession();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
   
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (session?.accessToken) {
+    headers['Authorization'] = `Bearer ${session.accessToken}`;
   }
   
   return headers;
-};
-
-export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-  const token = getAuthToken();
-
-  const headers = new Headers(options.headers || {});
-  
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-  
-  return fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include'
-  });
 };

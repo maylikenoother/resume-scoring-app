@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from "next-auth/react";
 import Link from 'next/link';
 import { Button, TextField, Box, Typography, CircularProgress, Alert } from '@mui/material';
-import { setAuthToken } from '@/app/utils/auth';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -19,36 +19,27 @@ export default function LoginForm() {
     setError('');
 
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', email);
-      formData.append('password', password);
-
-      const response = await fetch('/api/py/auth/login', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/x-www-form-urlencoded' 
-        },
-        body: formData,
+      const result = await signIn('credentials', {
+        redirect: false,
+        username: email,
+        password: password,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Login failed');
+      if (result?.error) {
+        throw new Error(result.error || 'Login failed');
       }
 
-      const data = await response.json();
-      
-      setAuthToken(data.access_token);
-      
-      console.log('Login successful, redirecting to dashboard...');
-      
-      window.location.href = '/dashboard';
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
       console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOAuthSignIn = (provider: string) => {
+    signIn(provider, { callbackUrl: '/dashboard' });
   };
 
   return (
@@ -71,6 +62,26 @@ export default function LoginForm() {
           {error}
         </Alert>
       )}
+
+      <Button
+        fullWidth
+        variant="contained"
+        sx={{ mt: 1, bgcolor: '#24292e', '&:hover': { bgcolor: '#1a1e22' } }}
+        onClick={() => handleOAuthSignIn('github')}
+      >
+        Sign in with GitHub
+      </Button>
+
+      <Button
+        fullWidth
+        variant="contained"
+        sx={{ mt: 2, bgcolor: '#4285F4', '&:hover': { bgcolor: '#3367d6' } }}
+        onClick={() => handleOAuthSignIn('google')}
+      >
+        Sign in with Google
+      </Button>
+
+      <Typography sx={{ mt: 2, mb: 2 }}>Or</Typography>
 
       <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
         <TextField

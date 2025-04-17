@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession, signOut } from "next-auth/react";
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
 import {
   AppBar,
   Box,
@@ -36,23 +36,27 @@ export default function Navbar() {
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [credits, setCredits] = useState(0);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (status === 'authenticated') {
+      setIsLoggedIn(true);
       fetchUserData();
-      setLoading(false);
     } else if (status === 'unauthenticated') {
-      setLoading(false);
+      setIsLoggedIn(false);
     }
+    setLoading(status === 'loading');
   }, [status]);
 
   const fetchUserData = async () => {
     try {
+      if (!session?.accessToken) return;
+      
       try {
         const balanceResponse = await fetch('/api/py/credits/balance', {
           headers: {
-            'Authorization': `Bearer ${session?.accessToken}`
+            'Authorization': `Bearer ${session.accessToken}`
           },
           cache: 'no-store'
         });
@@ -70,7 +74,7 @@ export default function Navbar() {
       try {
         const notifResponse = await fetch('/api/py/notifications/unread-count', {
           headers: {
-            'Authorization': `Bearer ${session?.accessToken}`
+            'Authorization': `Bearer ${session.accessToken}`
           },
           cache: 'no-store'
         });
@@ -106,7 +110,7 @@ export default function Navbar() {
   };
 
   const handleLogout = () => {
-    signOut({ redirect: true, callbackUrl: '/' });
+    signOut({ callbackUrl: '/login' });
   };
 
   const navigateTo = (href: string) => {
@@ -118,11 +122,9 @@ export default function Navbar() {
     router.push('/notifications');
   };
 
-  if (loading && status === 'loading') {
+  if (loading) {
     return null;
   }
-
-  const isLoggedIn = status === 'authenticated';
 
   return (
     <AppBar position="static">
@@ -232,12 +234,8 @@ export default function Navbar() {
                   
                   <Tooltip title="Open settings">
                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                      <Avatar 
-                        sx={{ bgcolor: 'secondary.main' }}
-                        src={session?.user?.image || undefined}
-                        alt={session?.user?.name || "User"}
-                      >
-                        {!session?.user?.image && (session?.user?.name?.charAt(0) || "U")}
+                      <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                        {session?.user?.name?.charAt(0) || 'U'}
                       </Avatar>
                     </IconButton>
                   </Tooltip>
@@ -258,9 +256,6 @@ export default function Navbar() {
                   open={Boolean(anchorElUser)}
                   onClose={handleCloseUserMenu}
                 >
-                  <MenuItem onClick={handleCloseUserMenu}>
-                    <Typography textAlign="center">Profile</Typography>
-                  </MenuItem>
                   <MenuItem onClick={handleLogout}>
                     <Typography textAlign="center">Logout</Typography>
                   </MenuItem>
@@ -268,7 +263,7 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Button color="inherit" component={Link} href="/auth/signin" sx={{ mr: 1 }}>
+                <Button color="inherit" component={Link} href="/login" sx={{ mr: 1 }}>
                   Login
                 </Button>
                 <Button color="inherit" variant="outlined" component={Link} href="/register">

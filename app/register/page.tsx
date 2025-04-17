@@ -2,18 +2,23 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 import { Container, Paper } from '@mui/material';
 import RegisterForm from '@/app/components/auth/RegisterForm';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { status } = useSession();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
+    if (status === 'authenticated') {
       router.push('/dashboard');
     }
-  }, [router]);
+  }, [status, router]);
+
+  if (status === 'loading') {
+    return null;
+  }
 
   return (
     <Container maxWidth="sm" sx={{ py: 8 }}>

@@ -2,24 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 import { Box } from '@mui/material';
 import Dashboard from '@/app/components/dashboard/Dashboard';
 import Navbar from '@/app/components/layout/Navbar';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+  const { status } = useSession({
+    required: true,
+    onUnauthenticated() {
       router.push('/login');
-    } else {
-      setLoading(false);
-    }
-  }, [router]);
+    },
+  });
 
-  if (loading) {
+  if (status === "loading") {
     return null;
   }
 

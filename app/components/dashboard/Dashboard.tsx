@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 import {
   Box,
   Container,
@@ -26,7 +27,6 @@ import {
   Error as ErrorIcon,
   Notifications as NotificationsIcon,
 } from '@mui/icons-material';
-import { fetchWithAuth, isAuthenticated } from '@/app/utils/auth';
 
 interface Review {
   id: number;
@@ -47,6 +47,8 @@ interface Notification {
 
 export default function Dashboard() {
   const router = useRouter();
+  const { data: session } = useSession({ required: true });
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userData, setUserData] = useState<{
@@ -60,14 +62,10 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    // Check authentication first
-    if (!isAuthenticated()) {
-      router.push('/login');
-      return;
+    if (session?.accessToken) {
+      fetchDashboardData();
     }
-
-    fetchDashboardData();
-  }, [router]);
+  }, [session]);
 
   const fetchDashboardData = async () => {
     try {
@@ -77,9 +75,15 @@ export default function Dashboard() {
       // Use Promise.allSettled instead of Promise.all to prevent one failing request
       // from canceling all requests
       const [creditsRes, reviewsRes, notificationsRes] = await Promise.allSettled([
-        fetchWithAuth('/api/py/credits/balance'),
-        fetchWithAuth('/api/py/reviews/?limit=5'),
-        fetchWithAuth('/api/py/notifications/?limit=5')
+        fetch('/api/py/credits/balance', {
+          headers: { 'Authorization': `Bearer ${session?.accessToken}` }
+        }),
+        fetch('/api/py/reviews/?limit=5', {
+          headers: { 'Authorization': `Bearer ${session?.accessToken}` }
+        }),
+        fetch('/api/py/notifications/?limit=5', {
+          headers: { 'Authorization': `Bearer ${session?.accessToken}` }
+        })
       ]);
       
       // Process credits response

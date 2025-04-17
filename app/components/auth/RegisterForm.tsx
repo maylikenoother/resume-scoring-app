@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from "next-auth/react";
 import Link from 'next/link';
 import { Button, TextField, Box, Typography, CircularProgress, Alert } from '@mui/material';
 
@@ -50,7 +51,18 @@ export default function RegisterForm() {
         throw new Error(errorData.detail || 'Registration failed');
       }
 
-      router.push('/login');
+      // After successful registration, automatically sign in
+      const result = await signIn('credentials', {
+        redirect: false,
+        username: formData.email,
+        password: formData.password,
+      });
+
+      if (result?.error) {
+        router.push('/login');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
     } finally {

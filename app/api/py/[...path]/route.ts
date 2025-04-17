@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from "next-auth/jwt";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
   const path = params.path.join('/');
-  const apiBaseUrl = process.env.API_BASE_URL || 'http://127.0.0.1:8000';
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
   const url = `${apiBaseUrl}/api/py/${path}${request.nextUrl.search}`;
 
   const headers = new Headers();
   
-  const authHeader = request.headers.get('authorization');
-  if (authHeader) {
-    headers.set('Authorization', authHeader);
+  const token = await getToken({ req: request });
+  
+  if (token?.accessToken) {
+    headers.set('Authorization', `Bearer ${token.accessToken}`);
+    console.log(`Using NextAuth token for request to ${url}`);
+  } else {
+    console.warn(`No NextAuth token for request to ${url}`);
   }
   
   try {
@@ -50,7 +55,7 @@ export async function POST(
   { params }: { params: { path: string[] } }
 ) {
   const path = params.path.join('/');
-  const apiBaseUrl = process.env.API_BASE_URL || 'http://127.0.0.1:8000';
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
   const url = `${apiBaseUrl}/api/py/${path}`;
  
   const headers = new Headers();
@@ -60,9 +65,13 @@ export async function POST(
     headers.set('Content-Type', contentType);
   }
   
-  const authHeader = request.headers.get('authorization');
-  if (authHeader) {
-    headers.set('Authorization', authHeader);
+  const token = await getToken({ req: request });
+  
+  if (token?.accessToken) {
+    headers.set('Authorization', `Bearer ${token.accessToken}`);
+    console.log(`Using NextAuth token for POST request to ${url}`);
+  } else {
+    console.warn(`No NextAuth token for POST request to ${url}`);
   }
   
   try {
@@ -85,7 +94,6 @@ export async function POST(
           body: JSON.stringify(body),
         });
       } catch (e) {
-
         if (contentType && contentType.includes('application/x-www-form-urlencoded')) {
           const formData = await request.formData();
           const params = new URLSearchParams();
@@ -100,7 +108,6 @@ export async function POST(
             body: params,
           });
         } else {
-          // Fallback to plain text
           const text = await request.text();
           response = await fetch(url, {
             method: 'POST',
@@ -143,7 +150,7 @@ export async function PUT(
   { params }: { params: { path: string[] } }
 ) {
   const path = params.path.join('/');
-  const apiBaseUrl = process.env.API_BASE_URL || 'http://127.0.0.1:8000';
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
   const url = `${apiBaseUrl}/api/py/${path}`;
   
   const headers = new Headers();
@@ -155,9 +162,13 @@ export async function PUT(
     headers.set('Content-Type', 'application/json');
   }
   
-  const authHeader = request.headers.get('authorization');
-  if (authHeader) {
-    headers.set('Authorization', authHeader);
+  const token = await getToken({ req: request });
+  
+  if (token?.accessToken) {
+    headers.set('Authorization', `Bearer ${token.accessToken}`);
+    console.log(`Using NextAuth token for PUT request to ${url}`);
+  } else {
+    console.warn(`No NextAuth token for PUT request to ${url}`);
   }
   
   try {
