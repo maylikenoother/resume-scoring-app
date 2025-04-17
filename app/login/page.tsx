@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { Container, Paper } from '@mui/material';
 import LoginForm from '@/app/components/auth/LoginForm';
+import Navbar from '@/app/components/layout/Navbar';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,10 +22,13 @@ export default function LoginPage() {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 8 }}>
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
-        <LoginForm />
-      </Paper>
-    </Container>
+    <>
+      <Navbar />
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
+          <LoginForm />
+        </Paper>
+      </Container>
+    </>
   );
 }

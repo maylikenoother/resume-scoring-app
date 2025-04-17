@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from "next-auth/react";
 import Link from 'next/link';
-import { Button, TextField, Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { Button, TextField, Box, Typography, CircularProgress, Alert, Divider } from '@mui/material';
+import { GitHub as GitHubIcon, Google as GoogleIcon } from '@mui/icons-material';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -63,27 +64,33 @@ export default function LoginForm() {
         </Alert>
       )}
 
-      <Button
-        fullWidth
-        variant="contained"
-        sx={{ mt: 1, bgcolor: '#24292e', '&:hover': { bgcolor: '#1a1e22' } }}
-        onClick={() => handleOAuthSignIn('github')}
-      >
-        Sign in with GitHub
-      </Button>
+      <Box sx={{ width: '100%', mb: 3 }}>
+        <Button
+          fullWidth
+          variant="contained"
+          sx={{ mt: 1, bgcolor: '#24292e', '&:hover': { bgcolor: '#1a1e22' } }}
+          onClick={() => handleOAuthSignIn('github')}
+        >
+          <GitHubIcon sx={{ mr: 1 }} /> Sign in with GitHub
+        </Button>
 
-      <Button
-        fullWidth
-        variant="contained"
-        sx={{ mt: 2, bgcolor: '#4285F4', '&:hover': { bgcolor: '#3367d6' } }}
-        onClick={() => handleOAuthSignIn('google')}
-      >
-        Sign in with Google
-      </Button>
+        <Button
+          fullWidth
+          variant="contained"
+          sx={{ mt: 2, bgcolor: '#4285F4', '&:hover': { bgcolor: '#3367d6' } }}
+          onClick={() => handleOAuthSignIn('google')}
+        >
+          <GoogleIcon sx={{ mr: 1 }} /> Sign in with Google
+        </Button>
+      </Box>
 
-      <Typography sx={{ mt: 2, mb: 2 }}>Or</Typography>
+      <Divider sx={{ width: '100%', mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          OR
+        </Typography>
+      </Divider>
 
-      <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
+      <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
         <TextField
           margin="normal"
           required

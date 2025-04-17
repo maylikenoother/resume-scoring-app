@@ -47,7 +47,7 @@ interface Notification {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { data: session } = useSession({ required: true });
+  const { data: session, status } = useSession({ required: true });
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,31 +62,22 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (session?.accessToken) {
+    if (status === 'authenticated') {
       fetchDashboardData();
     }
-  }, [session]);
+  }, [status]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       setError('');
-      
-      // Use Promise.allSettled instead of Promise.all to prevent one failing request
-      // from canceling all requests
+
       const [creditsRes, reviewsRes, notificationsRes] = await Promise.allSettled([
-        fetch('/api/py/credits/balance', {
-          headers: { 'Authorization': `Bearer ${session?.accessToken}` }
-        }),
-        fetch('/api/py/reviews/?limit=5', {
-          headers: { 'Authorization': `Bearer ${session?.accessToken}` }
-        }),
-        fetch('/api/py/notifications/?limit=5', {
-          headers: { 'Authorization': `Bearer ${session?.accessToken}` }
-        })
+        fetch('/api/py/credits/balance'),
+        fetch('/api/py/reviews?limit=5'),
+        fetch('/api/py/notifications?limit=5')
       ]);
       
-      // Process credits response
       let credits = 0;
       if (creditsRes.status === 'fulfilled' && creditsRes.value.ok) {
         const creditsData = await creditsRes.value.json();
@@ -96,7 +87,6 @@ export default function Dashboard() {
           creditsRes.status === 'rejected' ? creditsRes.reason : await creditsRes.value.text());
       }
       
-      // Process reviews response
       let reviews = [];
       if (reviewsRes.status === 'fulfilled' && reviewsRes.value.ok) {
         const reviewsData = await reviewsRes.value.json();
@@ -106,7 +96,6 @@ export default function Dashboard() {
           reviewsRes.status === 'rejected' ? reviewsRes.reason : await reviewsRes.value.text());
       }
       
-      // Process notifications response
       let notifications = [];
       if (notificationsRes.status === 'fulfilled' && notificationsRes.value.ok) {
         const notificationsData = await notificationsRes.value.json();

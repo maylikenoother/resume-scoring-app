@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 import { Container, Paper } from '@mui/material';
 import RegisterForm from '@/app/components/auth/RegisterForm';
+import Navbar from '@/app/components/layout/Navbar';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,10 +22,13 @@ export default function RegisterPage() {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 8 }}>
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
-        <RegisterForm />
-      </Paper>
-    </Container>
+    <>
+      <Navbar />
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
+          <RegisterForm />
+        </Paper>
+      </Container>
+    </>
   );
 }
