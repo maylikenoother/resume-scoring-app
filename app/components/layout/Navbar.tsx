@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession, signOut } from "next-auth/react";
+import { useAuth, useUser, SignOutButton } from "@clerk/nextjs";
 import Link from 'next/link';
 import {
   AppBar,
@@ -31,40 +31,24 @@ const pages = [
 
 export default function Navbar() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [credits, setCredits] = useState(0);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      setIsLoggedIn(true);
-      if (session?.accessToken) {
-        localStorage.setItem('token', session.accessToken);
-        fetchUserData();
-      }
-    } else if (status === 'unauthenticated') {
-      setIsLoggedIn(false);
-      localStorage.removeItem('token');
+    if (isSignedIn) {
+      fetchUserData();
     }
-    setLoading(status === 'loading');
-  }, [status, session]);
+  }, [isSignedIn]);
 
   const fetchUserData = async () => {
     try {
-      const token = session?.accessToken || localStorage.getItem('token');
-      if (!token) return;
-      
-      const headers = {
-        'Authorization': `Bearer ${token}`
-      };
-      
+      // Fetch balance
       try {
         const balanceResponse = await fetch('/api/py/credits/balance', {
-          headers,
           cache: 'no-store'
         });
         
@@ -78,9 +62,9 @@ export default function Navbar() {
         console.error('Error fetching credit balance:', error);
       }
       
+      // Fetch notifications
       try {
         const notifResponse = await fetch('/api/py/notifications/unread-count', {
-          headers,
           cache: 'no-store'
         });
         
@@ -114,10 +98,6 @@ export default function Navbar() {
     setAnchorElUser(null);
   };
 
-  const handleLogout = () => {
-    signOut({ callbackUrl: '/login' });
-  };
-
   const navigateTo = (href: string) => {
     router.push(href);
     handleCloseNavMenu();
@@ -127,7 +107,7 @@ export default function Navbar() {
     router.push('/notifications');
   };
 
-  if (loading) {
+  if (!isLoaded) {
     return null;
   }
 
@@ -152,7 +132,7 @@ export default function Navbar() {
           </Typography>
 
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-            {isLoggedIn && (
+            {isSignedIn && (
               <>
                 <IconButton
                   size="large"
@@ -162,7 +142,7 @@ export default function Navbar() {
                   onClick={handleOpenNavMenu}
                   color="inherit"
                 >
-                  <MenuIcon />
+                 <MenuIcon />
                 </IconButton>
                 <Menu
                   id="menu-appbar"
@@ -210,7 +190,7 @@ export default function Navbar() {
           </Typography>
 
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            {isLoggedIn && pages.map((page) => (
+            {isSignedIn && pages.map((page) => (
               <Button
                 key={page.name}
                 onClick={() => navigateTo(page.href)}
@@ -222,7 +202,7 @@ export default function Navbar() {
           </Box>
 
           <Box sx={{ flexGrow: 0 }}>
-            {isLoggedIn ? (
+            {isSignedIn ? (
               <>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   <Typography sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
@@ -240,7 +220,7 @@ export default function Navbar() {
                   <Tooltip title="Open settings">
                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                       <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                        {session?.user?.name?.charAt(0) || 'U'}
+                        {user?.firstName?.charAt(0) || user?.username?.charAt(0) || 'U'}
                       </Avatar>
                     </IconButton>
                   </Tooltip>
@@ -261,8 +241,10 @@ export default function Navbar() {
                   open={Boolean(anchorElUser)}
                   onClose={handleCloseUserMenu}
                 >
-                  <MenuItem onClick={handleLogout}>
-                    <Typography textAlign="center">Logout</Typography>
+                  <MenuItem onClick={handleCloseUserMenu}>
+                    <SignOutButton>
+                      <Typography textAlign="center">Logout</Typography>
+                    </SignOutButton>
                   </MenuItem>
                 </Menu>
               </>

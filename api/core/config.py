@@ -1,47 +1,55 @@
-from dotenv import load_dotenv
-import os
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../.env'))
-
+# api/core/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 from functools import lru_cache
 
 class Settings(BaseSettings):
+    # Application settings
     PROJECT_NAME: str = "CV Review API"
     API_V1_STR: str = "/api/py"
     
-    DATABASE_URL: str = os.getenv("DATABASE_URL")
-    SECRET_KEY: str
-    ALGORITHM: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
-
-    OPENAI_API_KEY: str
+    # Database settings
+    DATABASE_URL: str = "sqlite+aiosqlite:///./cv_review.db"
+    
+    # Security settings
+    SECRET_KEY: str = "supersecretkey"
+    
+    # Clerk authentication settings
+    CLERK_SECRET_KEY: Optional[str] = None
+    CLERK_PUBLISHABLE_KEY: Optional[str] = None
+    CLERK_JWT_KEY: Optional[str] = None
+    CLERK_FRONTEND_API: Optional[str] = None
+    CLERK_AUDIENCE: str = "cv-review-app"
+    
+    # OpenAI settings
+    OPENAI_API_KEY: Optional[str] = None
     AI_MODEL: str = "gpt-3.5-turbo"
     
+    # Credit system settings
     DEFAULT_CREDITS: int = 5
     REVIEW_CREDIT_COST: int = 1 
     
+    # Background task settings
     BACKGROUND_WORKERS: int = 2
+    
+    # CORS settings
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
-
-    NEXTAUTH_URL: str
-    NEXTAUTH_SECRET: str
-    NEXT_PUBLIC_API_URL: str
-    GITHUB_ID: str
-    GITHUB_SECRET: str
-    GOOGLE_CLIENT_ID: str
-    GOOGLE_CLIENT_SECRET: str
-    API_BASE_URL: str
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        case_sensitive=True
-    )
+    
+    # Next.js related settings
+    NEXT_PUBLIC_API_URL: Optional[str] = None
+    API_BASE_URL: Optional[str] = None
+    
+    # Legacy settings (can be removed later)
+    ALGORITHM: Optional[str] = None
+    ACCESS_TOKEN_EXPIRE_MINUTES: Optional[int] = None
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+        extra = "ignore"  # This is crucial - allow extra fields in the environment
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
 
 settings = get_settings()
-
-print("USING DATABASE URL:", settings.DATABASE_URL)

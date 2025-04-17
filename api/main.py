@@ -1,12 +1,11 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from api.core.config import settings
 from api.core.database import engine, Base
-from api.routers import auth, reviews, credits, notifications
+from api.routers import reviews, credits, notifications
 from api.services.background_tasks import setup_background_tasks
 
 logging.basicConfig(
@@ -27,6 +26,7 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"OpenAI API Key set: {bool(settings.OPENAI_API_KEY)}")
     logger.info(f"Using AI model: {settings.AI_MODEL}")
+    logger.info(f"Clerk integration enabled: {bool(settings.CLERK_SECRET_KEY)}")
     
     background_task_manager = setup_background_tasks()
     
@@ -51,7 +51,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(reviews.router, prefix=settings.API_V1_STR)
 app.include_router(credits.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)

@@ -1,3 +1,3 @@
-from api.routers import auth, reviews, credits, notifications
+from api.routers import reviews, credits, notifications
 
-__all__ = ["auth", "reviews", "credits", "notifications"]
+__all__ = ["reviews", "credits", "notifications"]

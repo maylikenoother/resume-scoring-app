@@ -1,29 +1,25 @@
-// app/middleware.ts
 import { NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
+import { clerkClient, getAuth } from '@clerk/nextjs/server';
 
 export async function middleware(request: NextRequest) {
+  const { userId } = getAuth(request);
   const { pathname } = request.nextUrl;
 
-  // Check if this is an API route or a public path
-  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/py/')) {
+  if (pathname.startsWith('/api/py/')) {
     return NextResponse.next();
   }
 
-  const publicPaths = ['/login', '/register', '/', '/api'];
+  const publicPaths = ['/login', '/register', '/', '/api/py/health'];
   const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'));
   
-  // Get token using next-auth
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-
-  if (!token && !isPublicPath) {
+  if (!userId && !isPublicPath) {
     const url = new URL('/login', request.url);
     url.searchParams.set('callbackUrl', encodeURI(request.url));
     return NextResponse.redirect(url);
   }
 
-  if (token && (pathname === '/login' || pathname === '/register')) {
+  if (userId && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

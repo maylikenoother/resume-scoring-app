@@ -1,22 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from "next-auth/react";
+import { useAuth } from "@clerk/nextjs";
 import { Box } from '@mui/material';
 import Dashboard from '@/app/components/dashboard/Dashboard';
 import Navbar from '@/app/components/layout/Navbar';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { status } = useSession({
-    required: true,
-    onUnauthenticated() {
-      router.push('/login');
-    },
-  });
+  const { isLoaded, isSignedIn } = useAuth();
 
-  if (status === "loading") {
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push('/login');
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  if (!isLoaded) {
     return null;
   }
 

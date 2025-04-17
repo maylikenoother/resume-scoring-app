@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from "next-auth/react";
+import { useAuth } from "@clerk/nextjs";
 import {
   Box,
   Container,
@@ -47,7 +47,7 @@ interface Notification {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { data: session, status } = useSession({ required: true });
+  const { isLoaded, isSignedIn } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,30 +62,22 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (isLoaded && isSignedIn) {
       fetchDashboardData();
+    } else if (isLoaded && !isSignedIn) {
+      router.push('/login');
     }
-  }, [status]);
+  }, [isLoaded, isSignedIn]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       setError('');
-
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
       
-      const headers = {
-        'Authorization': `Bearer ${token}`
-      };
-
       const [creditsRes, reviewsRes, notificationsRes] = await Promise.allSettled([
-        fetch('/api/py/credits/balance', { headers }),
-        fetch('/api/py/reviews/?limit=5', { headers }),
-        fetch('/api/py/notifications/?limit=5', { headers })
+        fetch('/api/py/credits/balance'),
+        fetch('/api/py/reviews/?limit=5'),
+        fetch('/api/py/notifications/?limit=5')
       ]);
       
       let credits = 0;
@@ -162,7 +154,7 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) {
+  if (!isLoaded || loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
         <CircularProgress />
@@ -257,7 +249,6 @@ export default function Dashboard() {
             )}
           </Paper>
         </Grid>
-
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
