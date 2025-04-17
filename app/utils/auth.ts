@@ -2,7 +2,7 @@ export const setAuthToken = (token: string) => {
     localStorage.setItem('token', token);
     
     const expires = new Date();
-    expires.setDate(expires.getDate() + 7); // 7 days
+    expires.setDate(expires.getDate() + 7);
     
     document.cookie = `auth_token=${token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
   };
@@ -19,7 +19,7 @@ export const setAuthToken = (token: string) => {
   export const isAuthenticated = () => {
     const token = getAuthToken();
     if (!token) return false;
-
+   
     return true;
   };
   
@@ -35,17 +35,19 @@ export const setAuthToken = (token: string) => {
     
     return headers;
   };
- 
+  
   export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
- 
+  
     const headers = new Headers(options.headers || {});
+    
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-
+    
     return fetch(url, {
       ...options,
-      headers
+      headers,
+      credentials: 'include'
     });
   };

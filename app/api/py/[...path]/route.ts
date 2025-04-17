@@ -26,6 +26,7 @@ export async function GET(
     if (!response.ok) {
       console.error(`API returned error status: ${response.status} ${response.statusText}`);
     }
+    
     let data;
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
@@ -76,9 +77,8 @@ export async function POST(
         body: formData,
       });
     } else {
-      let body;
       try {
-        body = await request.json();
+        const body = await request.json();
         response = await fetch(url, {
           method: 'POST',
           headers,
@@ -100,6 +100,7 @@ export async function POST(
             body: params,
           });
         } else {
+          // Fallback to plain text
           const text = await request.text();
           response = await fetch(url, {
             method: 'POST',

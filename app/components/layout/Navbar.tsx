@@ -21,6 +21,7 @@ import {
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
 } from '@mui/icons-material';
+import { getAuthToken, removeAuthToken } from '@/app/utils/auth';
 
 const pages = [
   { name: 'Dashboard', href: '/dashboard' },
@@ -35,39 +36,60 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [credits, setCredits] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (token) {
       setIsLoggedIn(true);
       fetchUserData();
+    } else {
+      setIsLoggedIn(false);
     }
+    setLoading(false);
   }, []);
 
   const fetchUserData = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
+      if (!token) return;
       
-      const balanceResponse = await fetch('/api/py/credits/balance', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // Fetch user credit balance
+      try {
+        const balanceResponse = await fetch('/api/py/credits/balance', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          cache: 'no-store'
+        });
+        
+        if (balanceResponse.ok) {
+          const balanceData = await balanceResponse.json();
+          setCredits(balanceData.balance);
+        } else {
+          console.error('Failed to fetch credit balance:', balanceResponse.status);
         }
-      });
-      
-      if (balanceResponse.ok) {
-        const balanceData = await balanceResponse.json();
-        setCredits(balanceData.balance);
+      } catch (error) {
+        console.error('Error fetching credit balance:', error);
       }
       
-      const notifResponse = await fetch('/api/py/notifications/unread-count', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // Fetch unread notifications count
+      try {
+        const notifResponse = await fetch('/api/py/notifications/unread-count', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          cache: 'no-store'
+        });
+        
+        if (notifResponse.ok) {
+          const count = await notifResponse.json();
+          setUnreadCount(count);
+        } else {
+          console.error('Failed to fetch notification count:', notifResponse.status);
         }
-      });
-      
-      if (notifResponse.ok) {
-        const count = await notifResponse.json();
-        setUnreadCount(count);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -91,9 +113,9 @@ export default function Navbar() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    removeAuthToken();
     setIsLoggedIn(false);
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   const navigateTo = (href: string) => {
@@ -104,6 +126,10 @@ export default function Navbar() {
   const handleNotificationsClick = () => {
     router.push('/notifications');
   };
+
+  if (loading) {
+    return null;
+  }
 
   return (
     <AppBar position="static">
@@ -213,7 +239,8 @@ export default function Navbar() {
                   
                   <Tooltip title="Open settings">
                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                      <Avatar alt="User" />
+                      <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                      </Avatar>
                     </IconButton>
                   </Tooltip>
                 </Box>
@@ -252,5 +279,5 @@ export default function Navbar() {
         </Toolbar>
       </Container>
     </AppBar>
-    );
-  }
+  );
+}

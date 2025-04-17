@@ -19,13 +19,16 @@ export default function LoginForm() {
     setError('');
 
     try {
+      const formData = new URLSearchParams();
+      formData.append('username', email);
+      formData.append('password', password);
+
       const response = await fetch('/api/py/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          username: email,
-          password: password,
-        }),
+        headers: { 
+          'Content-Type': 'application/x-www-form-urlencoded' 
+        },
+        body: formData,
       });
 
       if (!response.ok) {
@@ -35,12 +38,14 @@ export default function LoginForm() {
 
       const data = await response.json();
       
-      // Use the utility function to set tokens
       setAuthToken(data.access_token);
-
-      router.push('/dashboard');
+      
+      console.log('Login successful, redirecting to dashboard...');
+      
+      window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }

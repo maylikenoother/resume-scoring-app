@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from api.core.config import settings
@@ -8,13 +9,24 @@ from api.core.database import engine, Base
 from api.routers import auth, reviews, credits, notifications
 from api.services.background_tasks import setup_background_tasks
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting application")
     await create_tables()
+
+    logger.info(f"OpenAI API Key set: {bool(settings.OPENAI_API_KEY)}")
+    logger.info(f"Using AI model: {settings.AI_MODEL}")
     
     background_task_manager = setup_background_tasks()
     

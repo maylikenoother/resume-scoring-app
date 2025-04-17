@@ -2,6 +2,7 @@ import httpx
 import logging
 import asyncio
 import json
+import os
 from typing import Dict, Any, Optional
 
 from api.core.config import settings
@@ -19,8 +20,13 @@ async def generate_review(cv_content: str) -> str:
         A formatted review of the CV
     """
     try:
-        if not settings.AI_API_TOKEN:
-            logger.warning("No AI API token set. Using mock review data.")
+        logger.info(f"Settings OPENAI_API_KEY present: {settings.OPENAI_API_KEY is not None}")
+        logger.info(f"Environment OPENAI_API_KEY present: {os.environ.get('OPENAI_API_KEY') is not None}")
+        
+        api_key = settings.OPENAI_API_KEY or os.environ.get('OPENAI_API_KEY')
+        
+        if not api_key:
+            logger.warning("No OpenAI API key found in settings or environment. Using mock review data.")
             return generate_mock_review(cv_content)
         
         prompt = f"""
@@ -37,10 +43,13 @@ async def generate_review(cv_content: str) -> str:
         6. Specific improvements
         """
 
-        headers = {"Authorization": f"Bearer {settings.AI_API_TOKEN}"}
+        logger.info(f"Using OpenAI Model: {settings.AI_MODEL}")
+        
+        headers = {"Authorization": f"Bearer {api_key}"}
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
+                logger.info("Sending request to OpenAI API...")
                 response = await client.post(
                     "https://api.openai.com/v1/chat/completions",
                     headers=headers,
@@ -56,6 +65,7 @@ async def generate_review(cv_content: str) -> str:
                 )
                 
                 if response.status_code == 200:
+                    logger.info("Successfully received response from OpenAI")
                     data = response.json()
                     return data["choices"][0]["message"]["content"]
                 else:
