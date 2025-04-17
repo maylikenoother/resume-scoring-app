@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useSession, signOut } from 'next-auth/react';
 import {
   AppBar,
   Box,
@@ -21,7 +22,6 @@ import {
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
 } from '@mui/icons-material';
-import { getAuthToken, removeAuthToken } from '@/app/utils/auth';
 
 const pages = [
   { name: 'Dashboard', href: '/dashboard' },
@@ -31,34 +31,28 @@ const pages = [
 
 export default function Navbar() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [credits, setCredits] = useState(0);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = getAuthToken();
-    if (token) {
-      setIsLoggedIn(true);
+    if (status === 'authenticated') {
       fetchUserData();
-    } else {
-      setIsLoggedIn(false);
+      setLoading(false);
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
+  }, [status]);
 
   const fetchUserData = async () => {
     try {
-      const token = getAuthToken();
-      if (!token) return;
-      
-      // Fetch user credit balance
       try {
         const balanceResponse = await fetch('/api/py/credits/balance', {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${session?.accessToken}`
           },
           cache: 'no-store'
         });
@@ -73,11 +67,10 @@ export default function Navbar() {
         console.error('Error fetching credit balance:', error);
       }
       
-      // Fetch unread notifications count
       try {
         const notifResponse = await fetch('/api/py/notifications/unread-count', {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${session?.accessToken}`
           },
           cache: 'no-store'
         });
@@ -113,9 +106,7 @@ export default function Navbar() {
   };
 
   const handleLogout = () => {
-    removeAuthToken();
-    setIsLoggedIn(false);
-    window.location.href = '/login';
+    signOut({ redirect: true, callbackUrl: '/' });
   };
 
   const navigateTo = (href: string) => {
@@ -127,9 +118,11 @@ export default function Navbar() {
     router.push('/notifications');
   };
 
-  if (loading) {
+  if (loading && status === 'loading') {
     return null;
   }
+
+  const isLoggedIn = status === 'authenticated';
 
   return (
     <AppBar position="static">
@@ -239,7 +232,12 @@ export default function Navbar() {
                   
                   <Tooltip title="Open settings">
                     <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                      <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                      <Avatar 
+                        sx={{ bgcolor: 'secondary.main' }}
+                        src={session?.user?.image || undefined}
+                        alt={session?.user?.name || "User"}
+                      >
+                        {!session?.user?.image && (session?.user?.name?.charAt(0) || "U")}
                       </Avatar>
                     </IconButton>
                   </Tooltip>
@@ -260,6 +258,9 @@ export default function Navbar() {
                   open={Boolean(anchorElUser)}
                   onClose={handleCloseUserMenu}
                 >
+                  <MenuItem onClick={handleCloseUserMenu}>
+                    <Typography textAlign="center">Profile</Typography>
+                  </MenuItem>
                   <MenuItem onClick={handleLogout}>
                     <Typography textAlign="center">Logout</Typography>
                   </MenuItem>
@@ -267,7 +268,7 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Button color="inherit" component={Link} href="/login" sx={{ mr: 1 }}>
+                <Button color="inherit" component={Link} href="/auth/signin" sx={{ mr: 1 }}>
                   Login
                 </Button>
                 <Button color="inherit" variant="outlined" component={Link} href="/register">

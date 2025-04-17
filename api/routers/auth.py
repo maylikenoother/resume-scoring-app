@@ -1,10 +1,11 @@
 from datetime import timedelta
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from pydantic import BaseModel
 
 from api.core.auth import (
     authenticate_user,
@@ -78,3 +79,66 @@ async def read_users_me(
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
     return current_user
+
+# New OAuth authentication model
+class OAuthUserCreate(BaseModel):
+    email: str
+    name: Optional[str] = None
+    provider: str
+    oauth_id: str
+
+@router.post("/oauth", response_model=Token)
+async def oauth_login(
+    user_data: OAuthUserCreate,
+    db: AsyncSession = Depends(get_db),
+) -> Any:
+    """
+    Authenticate or create a user via OAuth providers (GitHub, Google)
+    """
+    # Check if user already exists
+    existing_user = await get_user_by_email(db, user_data.email)
+    
+    if not existing_user:
+        # Create new user
+        full_name = user_data.name or user_data.email.split('@')[0]
+        # Generate a secure random password since we'll never use it (OAuth only)
+        import secrets
+        import string
+        password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(20))
+        hashed_password = get_password_hash(password)
+        
+        new_user = User(
+            email=user_data.email,
+            full_name=full_name,
+            hashed_password=hashed_password,
+            is_active=True
+        )
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        
+        # Create credit balance for new user
+        credit_balance = CreditBalance(
+            user_id=new_user.id,
+            balance=settings.DEFAULT_CREDITS
+        )
+        db.add(credit_balance)
+        await db.commit()
+        
+        user = new_user
+    else:
+        # Use existing user
+        user = existing_user
+        
+        # Update user info if needed (like name)
+        if user_data.name and not user.full_name:
+            user.full_name = user_data.name
+            await db.commit()
+    
+    # Generate access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
