@@ -8,7 +8,7 @@ export default function RegisterPage() {
       <Navbar />
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <Paper elevation={3} sx={{ p: 4, borderRadius: 2, display: 'flex', justifyContent: 'center' }}>
-          <SignUp />
+          <SignUp routing="hash" />
         </Paper>
       </Container>
     </>
