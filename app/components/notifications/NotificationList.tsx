@@ -63,7 +63,6 @@ export default function NotificationList() {
       }
 
       const data = await response.json();
-      console.log('Notifications data:', data);
       setNotifications(data.notifications || []);
     } catch (err: any) {
       console.error('Error fetching notifications:', err);

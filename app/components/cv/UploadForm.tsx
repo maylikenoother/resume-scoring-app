@@ -1,4 +1,3 @@
-// app/components/cv/UploadForm.tsx
 'use client';
 
 import { useState } from 'react';

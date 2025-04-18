@@ -64,7 +64,6 @@ export default function ReviewsPage() {
       }
 
       const data = await response.json();
-      console.log('Reviews data:', data);
       setReviews(data.reviews || []);
     } catch (err: any) {
       console.error('Error fetching reviews:', err);

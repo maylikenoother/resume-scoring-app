@@ -46,7 +46,6 @@ export default function Navbar() {
 
   const fetchUserData = async () => {
     try {
-      // Fetch balance
       try {
         const balanceResponse = await fetch('/api/py/credits/balance', {
           cache: 'no-store'
@@ -55,8 +54,6 @@ export default function Navbar() {
         if (balanceResponse.ok) {
           const balanceData = await balanceResponse.json();
           setCredits(balanceData.balance);
-        } else {
-          console.error('Failed to fetch credit balance:', balanceResponse.status);
         }
       } catch (error) {
         console.error('Error fetching credit balance:', error);
@@ -71,8 +68,6 @@ export default function Navbar() {
         if (notifResponse.ok) {
           const count = await notifResponse.json();
           setUnreadCount(count);
-        } else {
-          console.error('Failed to fetch notification count:', notifResponse.status);
         }
       } catch (error) {
         console.error('Error fetching notifications:', error);

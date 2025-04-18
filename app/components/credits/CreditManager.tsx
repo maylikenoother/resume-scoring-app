@@ -115,7 +115,6 @@ export default function CreditManager() {
       }
 
       await fetchCreditData();
-
       alert(`Successfully purchased ${tier} credits package`);
     } catch (err: any) {
       setError(err.message || 'Failed to purchase credits');

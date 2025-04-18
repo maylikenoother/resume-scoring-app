@@ -16,22 +16,14 @@ export async function GET(
   
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
-    console.log(`Using Clerk token for request to ${url}`);
-  } else {
-    console.warn(`No Clerk token for request to ${url}`);
   }
   
   try {
-    console.log(`Proxying GET request to: ${url}`);
     const response = await fetch(url, {
       headers,
       method: 'GET',
       cache: 'no-store',
     });
-    
-    if (!response.ok) {
-      console.error(`API returned error status: ${response.status} ${response.statusText}`);
-    }
     
     let data;
     const contentType = response.headers.get('content-type');
@@ -71,13 +63,9 @@ export async function POST(
   
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
-    console.log(`Using Clerk token for POST request to ${url}`);
-  } else {
-    console.warn(`No Clerk token for POST request to ${url}`);
   }
   
   try {
-    console.log(`Proxying POST request to: ${url}`);
     let response;
     
     if (contentType && contentType.includes('multipart/form-data')) {
@@ -118,10 +106,6 @@ export async function POST(
           });
         }
       }
-    }
-    
-    if (!response.ok) {
-      console.error(`API returned error status: ${response.status} ${response.statusText}`);
     }
     
     let data;
@@ -169,13 +153,9 @@ export async function PUT(
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
-    console.log(`Using Clerk token for PUT request to ${url}`);
-  } else {
-    console.warn(`No Clerk token for PUT request to ${url}`);
   }
   
   try {
-    console.log(`Proxying PUT request to: ${url}`);
     let body;
     try {
       body = await request.json();
@@ -189,10 +169,6 @@ export async function PUT(
       body: typeof body === 'string' ? body : JSON.stringify(body),
       cache: 'no-store',
     });
-    
-    if (!response.ok) {
-      console.error(`API returned error status: ${response.status} ${response.statusText}`);
-    }
     
     let data;
     const responseContentType = response.headers.get('content-type');

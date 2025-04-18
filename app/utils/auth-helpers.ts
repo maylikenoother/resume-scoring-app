@@ -1,4 +1,3 @@
-// app/utils/auth-helpers.ts
 import { auth } from "@clerk/nextjs/server";
 
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {

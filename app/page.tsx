@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from "@clerk/nextjs";
 import Link from 'next/link';
 import {
   Box,
@@ -23,12 +24,11 @@ import Navbar from './components/layout/Navbar';
 
 export default function HomePage() {
   const router = useRouter();
-  const [authenticated, setAuthenticated] = useState(false);
+  const { isLoaded, isSignedIn } = useAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    setAuthenticated(!!token);
-  }, []);
+  if (!isLoaded) {
+    return null;
+  }
 
   return (
     <Box>
@@ -61,13 +61,13 @@ export default function HomePage() {
                 variant="contained"
                 size="large"
                 sx={{ mr: 2, bgcolor: 'white', color: 'primary.dark' }}
-                onClick={() => router.push(authenticated ? '/upload' : '/register')}
+                onClick={() => router.push(isSignedIn ? '/upload' : '/register')}
                 startIcon={<CloudUploadIcon />}
               >
-                {authenticated ? 'Upload CV' : 'Get Started'}
+                {isSignedIn ? 'Upload CV' : 'Get Started'}
               </Button>
               
-              {!authenticated && (
+              {!isSignedIn && (
                 <Button
                   variant="outlined"
                   size="large"
@@ -150,9 +150,9 @@ export default function HomePage() {
                 variant="contained"
                 size="large"
                 sx={{ bgcolor: 'white', color: 'primary.main' }}
-                onClick={() => router.push(authenticated ? '/upload' : '/register')}
+                onClick={() => router.push(isSignedIn ? '/upload' : '/register')}
               >
-                {authenticated ? 'Upload CV' : 'Sign Up Now'}
+                {isSignedIn ? 'Upload CV' : 'Sign Up Now'}
               </Button>
             </Grid>
           </Grid>

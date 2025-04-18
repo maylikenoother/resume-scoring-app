@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Clerk authentication settings
     CLERK_SECRET_KEY: Optional[str] = None
-    CLERK_PUBLISHABLE_KEY: Optional[str] = None
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: Optional[str] = None
     CLERK_JWT_KEY: Optional[str] = None
     CLERK_FRONTEND_API: Optional[str] = None
     CLERK_AUDIENCE: str = "cv-review-app"
