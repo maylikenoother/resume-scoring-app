@@ -236,11 +236,12 @@ export default function Navbar() {
                   open={Boolean(anchorElUser)}
                   onClose={handleCloseUserMenu}
                 >
-                  <MenuItem onClick={handleCloseUserMenu}>
-                    <SignOutButton>
-                      <Typography textAlign="center">Logout</Typography>
-                    </SignOutButton>
-                  </MenuItem>
+                  <SignOutButton>
+                    <MenuItem onClick={handleCloseUserMenu}>
+                      <span style={{ width: '100%', textAlign: 'center' }}>Logout</span>
+                    </MenuItem>
+                  </SignOutButton>
+
                 </Menu>
               </>
             ) : (
