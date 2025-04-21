@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser, SignOutButton } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { SignOutButton } from "@clerk/nextjs";
 import Link from 'next/link';
 import {
   AppBar,
@@ -236,11 +237,11 @@ export default function Navbar() {
                   open={Boolean(anchorElUser)}
                   onClose={handleCloseUserMenu}
                 >
-                  <SignOutButton>
-                    <MenuItem onClick={handleCloseUserMenu}>
+                  <MenuItem onClick={handleCloseUserMenu}>
+                    <SignOutButton>
                       <span style={{ width: '100%', textAlign: 'center' }}>Logout</span>
-                    </MenuItem>
-                  </SignOutButton>
+                    </SignOutButton>
+                  </MenuItem>
 
                 </Menu>
               </>

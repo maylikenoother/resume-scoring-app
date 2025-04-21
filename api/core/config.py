@@ -4,49 +4,39 @@ from typing import List, Optional
 from functools import lru_cache
 
 class Settings(BaseSettings):
-    # Application settings
     PROJECT_NAME: str = "CV Review API"
     API_V1_STR: str = "/api/py"
-    
-    # Database settings
+
     DATABASE_URL: str = "sqlite+aiosqlite:///./cv_review.db"
+
+    SECRET_KEY: str 
     
-    # Security settings
-    SECRET_KEY: str = "supersecretkey"
-    
-    # Clerk authentication settings
-    CLERK_SECRET_KEY: Optional[str] = None
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: Optional[str] = None
-    CLERK_JWT_KEY: Optional[str] = None
-    CLERK_FRONTEND_API: Optional[str] = None
+    CLERK_SECRET_KEY: str
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: str
+    CLERK_JWT_KEY: str
+    CLERK_FRONTEND_API: str
     CLERK_AUDIENCE: str = "cv-review-app"
     
-    # OpenAI settings
-    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY:str
     AI_MODEL: str = "gpt-3.5-turbo"
     
-    # Credit system settings
     DEFAULT_CREDITS: int = 5
     REVIEW_CREDIT_COST: int = 1 
     
-    # Background task settings
     BACKGROUND_WORKERS: int = 2
     
-    # CORS settings
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
     
-    # Next.js related settings
-    NEXT_PUBLIC_API_URL: Optional[str] = None
-    API_BASE_URL: Optional[str] = None
-    
-    # Legacy settings (can be removed later)
-    ALGORITHM: Optional[str] = None
-    ACCESS_TOKEN_EXPIRE_MINUTES: Optional[int] = None
+    NEXT_PUBLIC_API_URL: str
+    API_BASE_URL: str
+
+    ALGORITHM: Optional[str] = "RS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
     
     class Config:
         env_file = ".env"
         case_sensitive = True
-        extra = "ignore"  # This is crucial - allow extra fields in the environment
+        extra = "ignore" 
 
 @lru_cache
 def get_settings() -> Settings:
