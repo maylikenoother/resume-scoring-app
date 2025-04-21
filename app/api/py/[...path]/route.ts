@@ -1,3 +1,4 @@
+// app/api/py/[...path]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
 
@@ -10,7 +11,7 @@ export async function GET(
   const url = `${apiBaseUrl}/api/py/${path}${request.nextUrl.search}`;
 
   const headers = new Headers();
-  
+
   const { getToken } = await auth();
   const token = await getToken();
   

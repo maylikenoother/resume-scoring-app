@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
   const { userId } = getAuth(request);
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith('/api/py/')) {
+  if (pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
 

@@ -1,5 +1,5 @@
 'use client';
-
+import { apiClient } from '@/app/utils/api-client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from "@clerk/nextjs";
@@ -62,49 +62,42 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      fetchDashboardData();
-    } else if (isLoaded && !isSignedIn) {
-      router.push('/login');
+    if (isLoaded) {
+      if (isSignedIn) {
+        fetchDashboardData();
+      } else if (isLoaded && !isSignedIn) {
+        router.push('/login');
+      }
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, router]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       setError('');
       
-      const [creditsRes, reviewsRes, notificationsRes] = await Promise.allSettled([
-        fetch('/api/py/credits/balance'),
-        fetch('/api/py/reviews/?limit=5'),
-        fetch('/api/py/notifications/?limit=5')
-      ]);
-      
       let credits = 0;
-      if (creditsRes.status === 'fulfilled' && creditsRes.value.ok) {
-        const creditsData = await creditsRes.value.json();
+      try {
+        const creditsData = await apiClient.get('credits/balance');
         credits = creditsData.balance;
-      } else {
-        console.error('Failed to fetch credits:', 
-          creditsRes.status === 'rejected' ? creditsRes.reason : await creditsRes.value.text());
+      } catch (err) {
+        console.error('Failed to fetch credits:', err);
       }
       
       let reviews = [];
-      if (reviewsRes.status === 'fulfilled' && reviewsRes.value.ok) {
-        const reviewsData = await reviewsRes.value.json();
+      try {
+        const reviewsData = await apiClient.get('reviews/?limit=5');
         reviews = reviewsData.reviews || [];
-      } else {
-        console.error('Failed to fetch reviews:', 
-          reviewsRes.status === 'rejected' ? reviewsRes.reason : await reviewsRes.value.text());
+      } catch (err) {
+        console.error('Failed to fetch reviews:', err);
       }
       
       let notifications = [];
-      if (notificationsRes.status === 'fulfilled' && notificationsRes.value.ok) {
-        const notificationsData = await notificationsRes.value.json();
+      try {
+        const notificationsData = await apiClient.get('notifications/?limit=5');
         notifications = notificationsData.notifications || [];
-      } else {
-        console.error('Failed to fetch notifications:', 
-          notificationsRes.status === 'rejected' ? notificationsRes.reason : await notificationsRes.value.text());
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err);
       }
       
       setUserData({

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser } from "@clerk/nextjs";
 import { SignOutButton } from "@clerk/nextjs";
+import { apiClient } from '@/app/utils/api-client';
 import Link from 'next/link';
 import {
   AppBar,
@@ -48,28 +49,16 @@ export default function Navbar() {
   const fetchUserData = async () => {
     try {
       try {
-        const balanceResponse = await fetch('/api/py/credits/balance', {
-          cache: 'no-store'
-        });
-        
-        if (balanceResponse.ok) {
-          const balanceData = await balanceResponse.json();
-          setCredits(balanceData.balance);
-        }
+        const balanceData = await apiClient.get('credits/balance');
+        setCredits(balanceData.balance);
       } catch (error) {
         console.error('Error fetching credit balance:', error);
       }
       
       // Fetch notifications
       try {
-        const notifResponse = await fetch('/api/py/notifications/unread-count', {
-          cache: 'no-store'
-        });
-        
-        if (notifResponse.ok) {
-          const count = await notifResponse.json();
-          setUnreadCount(count);
-        }
+        const count = await apiClient.get('notifications/unread-count');
+        setUnreadCount(count);
       } catch (error) {
         console.error('Error fetching notifications:', error);
       }

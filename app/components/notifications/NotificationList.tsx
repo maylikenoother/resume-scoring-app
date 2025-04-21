@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiClient } from '@/app/utils/api-client';
 import { useAuth } from "@clerk/nextjs";
 import {
   Box,
@@ -48,22 +49,19 @@ export default function NotificationList() {
         router.push('/login');
       }
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, router]);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
       
-      const response = await fetch('/api/py/notifications', {
-        cache: 'no-store'
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch notifications: ${response.status}`);
+      try {
+        const data = await apiClient.get('notifications');
+        setNotifications(data.notifications || []);
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+        setError('An error occurred while loading notifications');
       }
-
-      const data = await response.json();
-      setNotifications(data.notifications || []);
     } catch (err: any) {
       console.error('Error fetching notifications:', err);
       setError(err.message || 'An error occurred while loading notifications');
@@ -74,14 +72,8 @@ export default function NotificationList() {
 
   const markAsRead = async (notificationId: number) => {
     try {
-      const response = await fetch(`/api/py/notifications/${notificationId}/read`, {
-        method: 'PUT'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark notification as read');
-      }
-
+      await apiClient.put(`notifications/${notificationId}/read`, {});
+      
       setNotifications(notifications.map(notification =>
         notification.id === notificationId ? { ...notification, is_read: true } : notification
       ));
@@ -95,15 +87,7 @@ export default function NotificationList() {
     try {
       setMarkingAll(true);
       
-      const response = await fetch('/api/py/notifications/read-all', {
-        method: 'PUT'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark all notifications as read');
-      }
-
-      const data = await response.json();
+      const data = await apiClient.put('notifications/read-all', {});
       setNotifications(data.notifications || []);
     } catch (err: any) {
       setError(err.message || 'Failed to mark all notifications as read');

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiClient } from '@/app/utils/api-client';
 import {
   Box,
   Container,
@@ -72,26 +73,30 @@ export default function CreditManager() {
   const fetchCreditData = async () => {
     try {
       setLoading(true);
-
-      const [balanceRes, transactionsRes, pricingRes] = await Promise.all([
-        fetch('/api/py/credits/balance'),
-        fetch('/api/py/credits/transactions'),
-        fetch('/api/py/credits/pricing')
-      ]);
-
-      if (!balanceRes.ok || !transactionsRes.ok || !pricingRes.ok) {
-        throw new Error('Failed to fetch credit data');
+  
+      try {
+        const balanceData = await apiClient.get('credits/balance');
+        setCreditBalance(balanceData);
+      } catch (balanceErr) {
+        console.error('Balance fetch failed:', balanceErr);
+        throw new Error('Failed to fetch credit balance');
       }
-
-      const balanceData = await balanceRes.json();
-      const transactionsData = await transactionsRes.json();
-      const pricingData = await pricingRes.json();
-
-      setCreditBalance(balanceData);
-      setTransactions(transactionsData);
-      setPricingTiers(pricingData);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while loading credit data');
+  
+      try {
+        const transactionsData = await apiClient.get('credits/transactions');
+        setTransactions(transactionsData);
+      } catch (transactionsErr) {
+        console.error('Transactions error:', transactionsErr);
+      }
+  
+      try {
+        const pricingData = await apiClient.get('credits/pricing');
+        setPricingTiers(pricingData);
+      } catch (pricingErr) {
+        console.error('Pricing error:', pricingErr);
+      }
+    } catch (err) {
+      setError((err instanceof Error ? err.message : 'An error occurred while loading credit data'));
       console.error('Credits error:', err);
     } finally {
       setLoading(false);
@@ -102,17 +107,9 @@ export default function CreditManager() {
     try {
       setPurchasing(tier);
 
-      const response = await fetch('/api/py/credits/purchase', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ credit_amount: pricingTiers?.[tier as keyof PricingTiers]?.amount || 0 })
+      await apiClient.post('credits/purchase', { 
+        credit_amount: pricingTiers?.[tier as keyof PricingTiers]?.amount || 0 
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to purchase credits');
-      }
 
       await fetchCreditData();
       alert(`Successfully purchased ${tier} credits package`);

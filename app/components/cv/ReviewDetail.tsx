@@ -1,8 +1,11 @@
+// app/components/cv/ReviewDetail.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from "@clerk/nextjs";
+import ReactMarkdown from 'react-markdown';
+import { apiClient } from '@/app/utils/api-client';
 import {
   Box,
   Paper,
@@ -23,7 +26,6 @@ import {
   AccessTime as AccessTimeIcon,
   Error as ErrorIcon,
 } from '@mui/icons-material';
-import ReactMarkdown from 'react-markdown';
 
 interface ReviewDetailProps {
   reviewId: number;
@@ -56,7 +58,7 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
         router.push('/login');
       }
     }
-  }, [reviewId, isLoaded, isSignedIn]);
+  }, [reviewId, isLoaded, isSignedIn, router]);
 
   useEffect(() => {
     if (review?.status === 'processing' && !polling) {
@@ -70,7 +72,7 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
         setPolling(false);
       };
     }
-  }, [review]);
+  }, [review, polling]);
 
   const fetchReviewData = async (showLoading = true) => {
     try {
@@ -78,17 +80,14 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
         setLoading(true);
       }
 
-      const response = await fetch(`/api/py/reviews/${reviewId}`, {
-        cache: 'no-store'
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch review data: ${response.status}`);
+      try {
+        const data = await apiClient.get(`reviews/${reviewId}`);
+        console.log('Review detail data:', data);
+        setReview(data);
+      } catch (err) {
+        console.error('Review detail error:', err);
+        setError('An error occurred while loading review data');
       }
-
-      const data = await response.json();
-      console.log('Review detail data:', data);
-      setReview(data);
     } catch (err: any) {
       console.error('Review detail error:', err);
       setError(err.message || 'An error occurred while loading review data');
@@ -175,7 +174,6 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
           Review Details
         </Typography>
       </Box>
-
       <Paper sx={{ p: 3, mb: 3 }}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={8}>
