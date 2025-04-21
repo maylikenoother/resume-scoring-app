@@ -12,17 +12,16 @@ export async function GET(
   const headers = new Headers();
 
   try {
-    // Get the token directly from Clerk
     const { getToken } = await auth();
-    const token = await getToken();
+    const token = await getToken({template: 'cv-review-app'});
     
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     } else {
+      // TODO - For debugging onlY, remove in production
       console.log('No authentication token available');
     }
     
-    // Set Accept header to ensure we get JSON when available
     headers.set('Accept', 'application/json');
     
     const response = await fetch(url, {
@@ -65,9 +64,8 @@ export async function POST(
   }
   
   try {
-    // Get the token directly from Clerk
-    const { getToken } =await auth();
-    const token = await getToken();
+    const { getToken } = await auth();
+    const token = await getToken({template: 'cv-review-app'});
     
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
@@ -75,7 +73,6 @@ export async function POST(
       console.log('No authentication token available for POST');
     }
     
-    // Set Accept header to ensure we get JSON when available
     headers.set('Accept', 'application/json');
     
     let response;
@@ -161,9 +158,8 @@ export async function PUT(
   }
   
   try {
-    // Get the token directly from Clerk
     const { getToken } = await auth();
-    const token = await getToken();
+    const token = await getToken({template: 'cv-review-app'});
 
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
@@ -171,7 +167,6 @@ export async function PUT(
       console.log('No authentication token available for PUT');
     }
     
-    // Set Accept header to ensure we get JSON when available
     headers.set('Accept', 'application/json');
     
     let body;

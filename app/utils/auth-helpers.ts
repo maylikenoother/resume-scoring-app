@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   const { getToken } = await auth();
-  const token = await getToken();
+  const token = await getToken({template: 'cv-review-app'});
   
   if (!token) {
     throw new Error('No authentication token found');

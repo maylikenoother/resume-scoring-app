@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
+import { getAuth, clerkClient } from '@clerk/nextjs/server';
 
 const publicPaths = [
   '/',
@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
 
   if (!userId) {
     const url = new URL('/login', request.url);
-    url.searchParams.set('callbackUrl', encodeURI(request.url));
+    url.searchParams.set('redirect_url', encodeURI(request.url));
     return NextResponse.redirect(url);
   }
 
