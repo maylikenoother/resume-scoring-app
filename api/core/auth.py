@@ -5,51 +5,106 @@ import base64
 import httpx
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt
+from jose import jwt, jwk
+from jose.utils import base64url_decode
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import logging
 
 from api.core.config import settings
 from api.core.database import get_db
 from api.models.models import User
 from api.schemas.schemas import UserCreate
 
+logger = logging.getLogger(__name__)
 security = HTTPBearer()
+
+_JWKS_CACHE = None
+_JWKS_CACHE_TIMESTAMP = None
 
 async def get_clerk_jwks() -> Dict[str, Any]:
     """Fetch the JWKS from Clerk's API to validate tokens"""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{settings.CLERK_FRONTEND_API}/.well-known/jwks.json"
+    global _JWKS_CACHE, _JWKS_CACHE_TIMESTAMP
+    
+    current_time = datetime.now()
+    if _JWKS_CACHE and _JWKS_CACHE_TIMESTAMP and \
+       (current_time - _JWKS_CACHE_TIMESTAMP).total_seconds() < 3600:
+        return _JWKS_CACHE
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            jwks_url = f"{settings.CLERK_FRONTEND_API}/.well-known/jwks.json"
+            logger.info(f"Fetching JWKS from {jwks_url}")
+            response = await client.get(jwks_url)
+            response.raise_for_status()
+            _JWKS_CACHE = response.json()
+            _JWKS_CACHE_TIMESTAMP = current_time
+            return _JWKS_CACHE
+    except Exception as e:
+        logger.error(f"Error fetching JWKS: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch JWKS: {str(e)}"
         )
-        response.raise_for_status()
-        return response.json()
 
 async def verify_clerk_jwt(token: str) -> Dict[str, Any]:
-    """Verify a Clerk JWT token"""
+    """Verify a Clerk JWT token using RS256 and JWKS"""
     try:
-        if not settings.CLERK_JWT_KEY:
+        header_segment = token.split('.')[0]
+        padded_header = header_segment + '=' * (4 - len(header_segment) % 4)
+        header_data = json.loads(base64.b64decode(padded_header).decode('utf-8'))
+        
+        kid = header_data.get('kid')
+        if not kid:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="CLERK_JWT_KEY not configured"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No 'kid' found in JWT header",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-            
-        header_b64, payload_b64, signature = token.split('.')
         
-        padded_payload = payload_b64 + '=' * (-len(payload_b64) % 4)
-        payload = json.loads(base64.b64decode(padded_payload))
+        jwks = await get_clerk_jwks()
         
-        decoded_token = jwt.decode(
+        key_data = None
+        for key in jwks.get('keys', []):
+            if key.get('kid') == kid:
+                key_data = key
+                break
+        
+        if not key_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No matching key found in JWKS",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        public_key = jwk.construct(key_data)
+        
+        payload = jwt.decode(
             token,
-            settings.CLERK_JWT_KEY,
-            algorithms=["HS256"],
+            public_key.to_pem().decode('utf-8'),
+            algorithms=[key_data.get('alg', 'RS256')],
             audience=settings.CLERK_AUDIENCE,
-            issuer=f"{settings.CLERK_FRONTEND_API}"
+            options={"verify_exp": True, "verify_signature": True}
         )
         
-        return decoded_token
-    except (jwt.JWTError, ValidationError) as e:
+        return payload
+    except jwt.ExpiredSignatureError:
+        logger.warning("JWT token has expired")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.JWTClaimsError as e:
+        logger.warning(f"JWT claims validation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"JWT claims validation failed: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except (jwt.JWTError, ValidationError, Exception) as e:
+        logger.error(f"Invalid token: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {str(e)}",
@@ -93,24 +148,35 @@ async def get_current_user(
 ) -> User:
     """Dependency to get current user from Clerk JWT token"""
     token = credentials.credentials
-    payload = await verify_clerk_jwt(token)
     
-    clerk_user_id = payload.get("sub")
-    if not clerk_user_id:
+    try:
+        payload = await verify_clerk_jwt(token)
+        
+        clerk_user_id = payload.get("sub")
+        if not clerk_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        user = await get_user_by_clerk_id(db, clerk_user_id)
+        
+        if not user:
+            email = payload.get("email")
+            full_name = payload.get("name") or payload.get("full_name")
+            user = await create_user_from_clerk(db, clerk_user_id, email, full_name)
+        
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Authentication error: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    user = await get_user_by_clerk_id(db, clerk_user_id)
-    
-    if not user:
-        email = payload.get("email")
-        full_name = payload.get("name") or payload.get("full_name")
-        user = await create_user_from_clerk(db, clerk_user_id, email, full_name)
-    
-    return user
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """Dependency to get current active user"""

@@ -1,4 +1,3 @@
-// app/api/py/[...path]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
 
@@ -12,14 +11,20 @@ export async function GET(
 
   const headers = new Headers();
 
-  const { getToken } = await auth();
-  const token = await getToken();
-  
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-  
   try {
+    // Get the token directly from Clerk
+    const { getToken } = await auth();
+    const token = await getToken();
+    
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      console.log('No authentication token available');
+    }
+    
+    // Set Accept header to ensure we get JSON when available
+    headers.set('Accept', 'application/json');
+    
     const response = await fetch(url, {
       headers,
       method: 'GET',
@@ -59,14 +64,20 @@ export async function POST(
     headers.set('Content-Type', contentType);
   }
   
-  const { getToken } = await auth();
-  const token = await getToken();
-  
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-  
   try {
+    // Get the token directly from Clerk
+    const { getToken } =await auth();
+    const token = await getToken();
+    
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      console.log('No authentication token available for POST');
+    }
+    
+    // Set Accept header to ensure we get JSON when available
+    headers.set('Accept', 'application/json');
+    
     let response;
     
     if (contentType && contentType.includes('multipart/form-data')) {
@@ -149,14 +160,20 @@ export async function PUT(
     headers.set('Content-Type', 'application/json');
   }
   
-  const { getToken } = await auth();
-  const token = await getToken();
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-  
   try {
+    // Get the token directly from Clerk
+    const { getToken } = await auth();
+    const token = await getToken();
+
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      console.log('No authentication token available for PUT');
+    }
+    
+    // Set Accept header to ensure we get JSON when available
+    headers.set('Accept', 'application/json');
+    
     let body;
     try {
       body = await request.json();

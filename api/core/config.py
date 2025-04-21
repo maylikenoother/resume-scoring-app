@@ -1,4 +1,3 @@
-# api/core/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 from functools import lru_cache
@@ -13,11 +12,11 @@ class Settings(BaseSettings):
     
     CLERK_SECRET_KEY: str
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: str
-    CLERK_JWT_KEY: str
-    CLERK_FRONTEND_API: str
+    CLERK_JWT_KEY: str = None
+    CLERK_FRONTEND_API: str = "https://magnetic-longhorn-34.clerk.accounts.dev"
     CLERK_AUDIENCE: str = "cv-review-app"
     
-    OPENAI_API_KEY:str
+    OPENAI_API_KEY: str
     AI_MODEL: str = "gpt-3.5-turbo"
     
     DEFAULT_CREDITS: int = 5
@@ -30,13 +29,15 @@ class Settings(BaseSettings):
     NEXT_PUBLIC_API_URL: str
     API_BASE_URL: str
 
-    ALGORITHM: Optional[str] = "RS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    ALGORITHM: str = "RS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "ignore" 
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore"
+    )
 
 @lru_cache
 def get_settings() -> Settings:
