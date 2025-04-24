@@ -13,6 +13,7 @@ from api.models.models import User, Review, CreditBalance, Notification, CreditT
 from api.schemas.schemas import ReviewList, Review as ReviewSchema
 from api.services.ai_service import generate_review
 from api.core.config import settings
+from api.utils.cloudinary_utils import upload_file_to_cloudinary
 
 router = APIRouter(
     prefix="/reviews",
@@ -42,21 +43,21 @@ async def upload_cv_for_review(
     if isinstance(content, bytes):
         content = content.decode("utf-8", errors="ignore")
     
-    upload_dir = Path("uploads")
-    upload_dir.mkdir(exist_ok=True)
-    
-    file_uuid = str(uuid.uuid4())
-    file_ext = os.path.splitext(file.filename)[1]
-    unique_filename = f"{file_uuid}{file_ext}"
-    file_path = os.path.join(upload_dir, unique_filename)
-    
-    with open(file_path, "w") as f:
-        f.write(content)
+    try:
+        cloudinary_result = await upload_file_to_cloudinary(content, file.filename)
+        file_url = cloudinary_result['secure_url']
+        public_id = cloudinary_result['public_id']
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload file to Cloudinary: {str(e)}",
+        )
     
     new_review = Review(
         user_id=current_user.id,
         filename=file.filename,
-        file_path=file_path,
+        file_path=file_url,
+        cloudinary_public_id=public_id,
         content=content,
         status="pending"
     )
@@ -115,7 +116,7 @@ async def process_review(review_id: int):
             
             review.status = "completed"
             review.review_result = review_result
-            review.score = 7.5  # This would be calculated based on the AI analysis
+            review.score = 7.5 
             
             notification = Notification(
                 user_id=review.user_id,

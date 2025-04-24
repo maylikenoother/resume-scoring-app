@@ -1,6 +1,5 @@
 import httpx
 import logging
-import asyncio
 import json
 import os
 from typing import Dict, Any, Optional
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 async def generate_review(cv_content: str) -> str:
     """
-    Generate an AI review for the CV content.
+    Generate an AI review for the CV content using Hugging Face Inference API.
     
     Args:
         cv_content: The text content of the CV to review
@@ -20,13 +19,12 @@ async def generate_review(cv_content: str) -> str:
         A formatted review of the CV
     """
     try:
-        logger.info(f"Settings OPENAI_API_KEY present: {settings.OPENAI_API_KEY is not None}")
-        logger.info(f"Environment OPENAI_API_KEY present: {os.environ.get('OPENAI_API_KEY') is not None}")
+        logger.info(f"Settings HUGGINGFACE_API_KEY present: {settings.HUGGINGFACE_API_KEY is not None}")
         
-        api_key = settings.OPENAI_API_KEY or os.environ.get('OPENAI_API_KEY')
+        api_key = settings.HUGGINGFACE_API_KEY
         
         if not api_key:
-            logger.warning("No OpenAI API key found in settings or environment. Using mock review data.")
+            logger.warning("No Hugging Face API key found in settings. Using mock review data.")
             return generate_mock_review(cv_content)
         
         prompt = f"""
@@ -43,39 +41,54 @@ async def generate_review(cv_content: str) -> str:
         6. Specific improvements
         """
 
-        logger.info(f"Using OpenAI Model: {settings.AI_MODEL}")
+        logger.info(f"Using Hugging Face Model: {settings.HUGGINGFACE_MODEL_ID}")
         
-        headers = {"Authorization": f"Bearer {api_key}"}
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "inputs": prompt,
+            "parameters": {
+                "max_new_tokens": 1000,
+                "temperature": 0.7,
+                "top_p": 0.95,
+                "do_sample": True
+            }
+        }
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                logger.info("Sending request to OpenAI API...")
+                logger.info("Sending request to Hugging Face Inference API...")
+                api_url = f"https://api-inference.huggingface.co/models/{settings.HUGGINGFACE_MODEL_ID}"
                 response = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
+                    api_url,
                     headers=headers,
-                    json={
-                        "model": settings.AI_MODEL,
-                        "messages": [
-                            {"role": "system", "content": "You are a professional CV reviewer."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        "max_tokens": 1000,
-                        "temperature": 0.7
-                    }
+                    json=payload
                 )
                 
                 if response.status_code == 200:
-                    logger.info("Successfully received response from OpenAI")
+                    logger.info("Successfully received response from Hugging Face")
                     data = response.json()
-                    return data["choices"][0]["message"]["content"]
+                    
+                    if isinstance(data, list):
+                        if isinstance(data[0], dict) and 'generated_text' in data[0]:
+                            return data[0]['generated_text']
+                        return data[0]
+                    elif isinstance(data, dict) and 'generated_text' in data:
+                        return data['generated_text']
+                    else:
+                        logger.error(f"Unexpected response format: {data}")
+                        return generate_mock_review(cv_content)
                 else:
                     logger.error(f"API error: {response.status_code} - {response.text}")
-                    error_message = f"Error from OpenAI API: {response.status_code}"
+                    error_message = f"Error from Hugging Face API: {response.status_code}"
                     if response.text:
                         try:
                             error_data = response.json()
-                            if "error" in error_data and "message" in error_data["error"]:
-                                error_message = f"OpenAI API error: {error_data['error']['message']}"
+                            if "error" in error_data:
+                                error_message = f"Hugging Face API error: {error_data['error']}"
                         except:
                             pass
                     

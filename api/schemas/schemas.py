@@ -73,6 +73,8 @@ class Review(ReviewBase):
     id: int
     user_id: int
     filename: str
+    file_path: str
+    cloudinary_public_id: Optional[str] = None
     content: str
     review_result: Optional[str] = None
     status: str

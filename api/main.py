@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from api.core.config import settings
 from api.core.database import engine, Base
-from api.routers import reviews, credits, notifications
+from api.routers import reviews, credits, notifications, cloudinary
 from api.services.background_tasks import setup_background_tasks
 
 logging.basicConfig(
@@ -24,9 +24,11 @@ async def lifespan(app: FastAPI):
     logger.info("Starting application")
     await create_tables()
 
-    logger.info(f"OpenAI API Key set: {bool(settings.OPENAI_API_KEY)}")
-    logger.info(f"Using AI model: {settings.AI_MODEL}")
+    logger.info(f"Hugging Face API Key set: {bool(settings.HUGGINGFACE_API_KEY)}")
+    logger.info(f"Using AI model: {settings.HUGGINGFACE_MODEL_ID}")
     logger.info(f"Clerk integration enabled: {bool(settings.CLERK_SECRET_KEY)}")
+    logger.info(f"Cloudinary integration enabled: {bool(settings.CLOUDINARY_CLOUD_NAME)}")
+    logger.info(f"Database URL: {settings.get_database_url.split('@')[0].split(':')[0]} (masked credentials)")
     
     background_task_manager = setup_background_tasks()
     
@@ -54,6 +56,7 @@ app.add_middleware(
 app.include_router(reviews.router, prefix=settings.API_V1_STR)
 app.include_router(credits.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
+app.include_router(cloudinary.router, prefix=settings.API_V1_STR)
 
 @app.get(f"{settings.API_V1_STR}/health")
 async def health_check():

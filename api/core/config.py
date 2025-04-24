@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/py"
 
     DATABASE_URL: str = "sqlite+aiosqlite:///./cv_review.db"
+    POSTGRES_URL: Optional[str] = None
+    
+    @property
+    def get_database_url(self) -> str:
+        return self.POSTGRES_URL if self.POSTGRES_URL else self.DATABASE_URL
 
     SECRET_KEY: str 
     
@@ -16,8 +21,8 @@ class Settings(BaseSettings):
     CLERK_FRONTEND_API: str = "https://magnetic-longhorn-34.clerk.accounts.dev"
     CLERK_AUDIENCE: str = "cv-review-app"
     
-    OPENAI_API_KEY: str
-    AI_MODEL: str = "gpt-3.5-turbo"
+    HUGGINGFACE_API_KEY: str
+    HUGGINGFACE_MODEL_ID: str = "google/flan-t5-large"
     
     DEFAULT_CREDITS: int = 5
     REVIEW_CREDIT_COST: int = 1 
@@ -25,6 +30,10 @@ class Settings(BaseSettings):
     BACKGROUND_WORKERS: int = 2
     
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
     
     NEXT_PUBLIC_API_URL: str
     API_BASE_URL: str
