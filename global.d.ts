@@ -1,1 +1,14 @@
+declare module '@clerk/nextjs/server';
+declare module '@mui/material';
 declare module '@mui/icons-material';
+declare module 'body-parser';
+declare module 'connect';
+declare module 'express';
+declare module 'express-serve-static-core';
+declare module 'http-errors';
+declare module 'keygrip';
+declare module 'mime';
+declare module 'qs';
+declare module 'range-parser';
+declare module 'send';
+declare module 'serve-static';

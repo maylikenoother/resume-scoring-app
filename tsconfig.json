@@ -20,9 +20,21 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
-    }
+      "@/*": ["./*"],
+      "@clerk/nextjs": ["./node_modules/@clerk/nextjs"],
+      "@mui/material": ["./node_modules/@mui/material"]
+    },
+    "types": [
+      "node",
+      "@types/react",
+      "@types/react-dom"
+    ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts", 
+    "**/*.ts", 
+    "**/*.tsx", 
+    ".next/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }
