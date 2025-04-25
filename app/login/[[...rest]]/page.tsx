@@ -8,7 +8,11 @@ export default function LoginPage() {
       <Navbar />
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <Paper elevation={3} sx={{ p: 4, borderRadius: 2, display: 'flex', justifyContent: 'center' }}>
-          <SignIn routing="hash" />
+          <SignIn 
+            routing="path" 
+            path="/login" 
+            signUpUrl="/register"
+          />
         </Paper>
       </Container>
     </>

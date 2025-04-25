@@ -4,31 +4,29 @@ const nextConfig = {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
   },
-  rewrites: async () => {
+  async rewrites() {
     return [
       {
         source: "/api/py/:path*",
-        destination:
+        destination: 
           process.env.NODE_ENV === "development"
             ? "http://127.0.0.1:8000/api/py/:path*"
             : "/api/py/:path*",
       },
       {
-        source: "/docs",
-        destination:
+        source: "/api/auth/token",
+        destination: 
           process.env.NODE_ENV === "development"
-            ? "http://127.0.0.1:8000/docs"
-            : "/api/py/docs",
-      },
-      {
-        source: "/openapi.json",
-        destination:
-          process.env.NODE_ENV === "development"
-            ? "http://127.0.0.1:8000/openapi.json"
-            : "/api/py/openapi.json",
-      },
+            ? "http://127.0.0.1:8000/api/py/auth/token"
+            : "/api/py/auth/token",
+      }
     ];
   },
+  
+  webpack: (config) => {
+    config.resolve.fallback = { fs: false, net: false, tls: false };
+    return config;
+  }
 };
 
 module.exports = nextConfig;

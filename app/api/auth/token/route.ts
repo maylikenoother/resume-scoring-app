@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
-import { cookies } from 'next/headers';
+import { auth } from "@clerk/nextjs/server";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const sessionToken = cookies().get('__session');
+    const { getToken } = auth();
+    const token = await getToken({template: 'cv-review-app'});
 
-    if (!sessionToken || !sessionToken.value) {
+    if (!token) {
       return NextResponse.json({ error: 'No session found' }, { status: 401 });
     }
 
-    return NextResponse.json({ token: sessionToken.value });
+    return NextResponse.json({ token });
   } catch (error) {
     console.error('Error getting token:', error);
     return NextResponse.json({ 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authMiddleware } from '@clerk/nextjs';
+import type { NextRequest } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
 const publicPaths = [
   '/',
@@ -11,36 +12,27 @@ const publicPaths = [
   '/api/auth/token'
 ];
 
-export default authMiddleware({
-  publicRoutes: publicPaths,
-  
-  // Skip Clerk for API routes
-  ignoredRoutes: ['/api/py/(.*)'],
-  
-  afterAuth(auth, req) {
-    const { userId } = auth;
-    const { pathname } = req.nextUrl;
-    
-    // If user is signed in and trying to access login/register
-    if (userId && (pathname === '/login' || pathname === '/register')) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
-    
-    // If user is not signed in and trying to access a protected route
-    if (!userId && !publicPaths.some(path => 
-      pathname === path || pathname.startsWith(`${path}/`))
-    ) {
-      const url = new URL('/login', req.url);
-      url.searchParams.set('redirect_url', encodeURI(req.url));
-      return NextResponse.redirect(url);
-    }
-    
+const isPublicRoute = createRouteMatcher(publicPaths);
+
+export default clerkMiddleware((auth, req: NextRequest) => {
+
+  if (isPublicRoute(req)) {
     return NextResponse.next();
   }
+
+  const { userId } = auth;
+  
+  if (!userId) {
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('redirect_url', req.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public/|_next/|api/auth).*)',
   ],
 };
