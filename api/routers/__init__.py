@@ -1,3 +1,3 @@
-from api.routers import reviews, credits, notifications
+from api.routers import reviews, credits, notifications, cloudinary, docs
 
-__all__ = ["reviews", "credits", "notifications"]
+__all__ = ["reviews", "credits", "notifications", "cloudinary", "docs"]

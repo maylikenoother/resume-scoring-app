@@ -24,3 +24,5 @@ pydantic[dotenv]==2.7.1
 cloudinary==1.38.0
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
+fpdf2==2.7.7
+markdown2==2.4.10
