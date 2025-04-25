@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
+import { authMiddleware } from '@clerk/nextjs';
 
 const publicPaths = [
   '/',
@@ -12,39 +11,36 @@ const publicPaths = [
   '/api/auth/token'
 ];
 
-export function middleware(request: NextRequest) {
-  // Skip Clerk authentication for FastAPI routes
-  if (request.nextUrl.pathname.startsWith('/api/py/')) {
+export default authMiddleware({
+  publicRoutes: publicPaths,
+  
+  // Skip Clerk for API routes
+  ignoredRoutes: ['/api/py/(.*)'],
+  
+  afterAuth(auth, req) {
+    const { userId } = auth;
+    const { pathname } = req.nextUrl;
+    
+    // If user is signed in and trying to access login/register
+    if (userId && (pathname === '/login' || pathname === '/register')) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+    
+    // If user is not signed in and trying to access a protected route
+    if (!userId && !publicPaths.some(path => 
+      pathname === path || pathname.startsWith(`${path}/`))
+    ) {
+      const url = new URL('/login', req.url);
+      url.searchParams.set('redirect_url', encodeURI(req.url));
+      return NextResponse.redirect(url);
+    }
+    
     return NextResponse.next();
   }
-
-  const { userId } = getAuth(request);
-  const { pathname } = request.nextUrl;
-
-  const isPublicPath = publicPaths.some(path => 
-    pathname === path || 
-    pathname.startsWith(`${path}/`)
-  );
-
-  if (isPublicPath) {
-    return NextResponse.next();
-  }
-
-  if (!userId) {
-    const url = new URL('/login', request.url);
-    url.searchParams.set('redirect_url', encodeURI(request.url));
-    return NextResponse.redirect(url);
-  }
-
-  if (userId && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],
-}
+};
