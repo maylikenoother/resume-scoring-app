@@ -12,9 +12,10 @@ class User(Base):
     email = Column(String, index=True, nullable=True)
     full_name = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    auth_token = Column(String, nullable=True) 
+    token_expiry = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
     credit_balance = relationship("CreditBalance", back_populates="user", uselist=False)
     reviews = relationship("Review", back_populates="user")
     notifications = relationship("Notification", back_populates="user")

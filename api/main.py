@@ -7,6 +7,7 @@ from api.core.config import settings
 from api.core.database import engine, Base
 from api.routers import reviews, credits, notifications, cloudinary
 from api.services.background_tasks import setup_background_tasks
+from api.core.auth import router as auth_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -57,6 +58,7 @@ app.include_router(reviews.router, prefix=settings.API_V1_STR)
 app.include_router(credits.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(cloudinary.router, prefix=settings.API_V1_STR)
+app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth") 
 
 @app.get(f"{settings.API_V1_STR}/health")
 async def health_check():

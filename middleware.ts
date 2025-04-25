@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getAuth, clerkClient } from '@clerk/nextjs/server';
+import { getAuth } from '@clerk/nextjs/server';
 
 const publicPaths = [
   '/',
@@ -8,16 +8,18 @@ const publicPaths = [
   '/register',
   '/api/py/health',
   '/verify',
-  '/forgot-password'
+  '/forgot-password',
+  '/api/auth/token'
 ];
 
-export async function middleware(request: NextRequest) {
-  const { userId } = getAuth(request);
-  const { pathname } = request.nextUrl;
-
-  if (pathname.startsWith('/api/')) {
+export function middleware(request: NextRequest) {
+  // Skip Clerk authentication for FastAPI routes
+  if (request.nextUrl.pathname.startsWith('/api/py/')) {
     return NextResponse.next();
   }
+
+  const { userId } = getAuth(request);
+  const { pathname } = request.nextUrl;
 
   const isPublicPath = publicPaths.some(path => 
     pathname === path || 

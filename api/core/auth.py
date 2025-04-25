@@ -1,15 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import json
 import base64
 import httpx
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status, Request, APIRouter
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, jwk
 from jose.utils import base64url_decode
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 import logging
 
 from api.core.config import settings
@@ -19,6 +19,7 @@ from api.schemas.schemas import UserCreate
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
+router = APIRouter()
 
 _JWKS_CACHE = None
 _JWKS_CACHE_TIMESTAMP = None
@@ -119,14 +120,25 @@ async def create_user_from_clerk(
     db: AsyncSession, 
     clerk_user_id: str, 
     email: Optional[str] = None, 
-    full_name: Optional[str] = None
+    full_name: Optional[str] = None,
+    token: Optional[str] = None
 ) -> User:
+    token_expiry = None
+    if token:
+        try:
+            payload = jwt.decode(token, options={"verify_signature": False})
+            if "exp" in payload:
+                token_expiry = datetime.fromtimestamp(payload["exp"])
+        except Exception as e:
+            logger.warning(f"Could not extract token expiry: {e}")
 
     new_user = User(
         clerk_user_id=clerk_user_id,
         email=email,
         full_name=full_name,
-        is_active=True
+        is_active=True,
+        auth_token=token,
+        token_expiry=token_expiry
     )
     db.add(new_user)
     await db.commit()
@@ -142,34 +154,86 @@ async def create_user_from_clerk(
     
     return new_user
 
+async def update_user_token(
+    db: AsyncSession,
+    user: User,
+    token: str
+) -> User:
+    """Update a user's stored auth token"""
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False})
+        if "exp" in payload:
+            user.token_expiry = datetime.fromtimestamp(payload["exp"])
+    except Exception as e:
+        logger.warning(f"Could not extract token expiry: {e}")
+        
+    user.auth_token = token
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
-    """Dependency to get current user from Clerk JWT token"""
+    """Dependency to get current user from Clerk JWT token or from stored token"""
     token = credentials.credentials
     
     try:
-        payload = await verify_clerk_jwt(token)
-        
-        clerk_user_id = payload.get("sub")
-        if not clerk_user_id:
+        try:
+            payload = await verify_clerk_jwt(token)
+            clerk_user_id = payload.get("sub")
+            
+            if not clerk_user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid authentication credentials",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            
+            user = await get_user_by_clerk_id(db, clerk_user_id)
+            
+            if user:
+                if user.auth_token != token:
+                    await update_user_token(db, user, token)
+            else:
+                email = payload.get("email")
+                full_name = payload.get("name") or payload.get("full_name")
+                user = await create_user_from_clerk(db, clerk_user_id, email, full_name, token)
+                
+            return user
+            
+        except HTTPException as e:
+            if e.status_code != status.HTTP_401_UNAUTHORIZED:
+                raise
+                
+            logger.info("Clerk validation failed, trying stored token")
+            
+            try:
+
+                payload = jwt.decode(token, options={"verify_signature": False})
+                clerk_user_id = payload.get("sub")
+                
+                if clerk_user_id:
+                    user = await get_user_by_clerk_id(db, clerk_user_id)
+                    
+                    if user and user.auth_token:
+                        if user.auth_token == token:
+                            if user.token_expiry and user.token_expiry > datetime.now():
+                                return user
+                            else:
+                                logger.warning(f"Stored token is expired for user {user.id}")
+                        else:
+                            logger.warning(f"Token mismatch for user {user.id}")
+            except Exception as decode_error:
+                logger.error(f"Error decoding token: {decode_error}")
+                
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
-        user = await get_user_by_clerk_id(db, clerk_user_id)
-        
-        if not user:
-            email = payload.get("email")
-            full_name = payload.get("name") or payload.get("full_name")
-            user = await create_user_from_clerk(db, clerk_user_id, email, full_name)
-        
-        return user
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Authentication error: {e}")
         raise HTTPException(
@@ -183,3 +247,33 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+class TokenData(BaseModel):
+    token: str
+
+@router.post("/store-token")
+async def store_auth_token(
+    token_data: TokenData,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Store a Clerk JWT token in the database"""
+    try:
+        token = token_data.token
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token is required"
+            )
+            
+        await update_user_token(db, current_user, token)
+        
+        return {"message": "Token stored successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error storing token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to store token: {str(e)}"
+        )
