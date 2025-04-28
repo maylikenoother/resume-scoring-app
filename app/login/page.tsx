@@ -44,6 +44,12 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    if (!formData.email.trim() || !formData.password.trim()) {
+      setError('Email and password are required');
+      setLoading(false);
+      return;
+    }
+
     try {
       const data = await apiClient.login(formData.email, formData.password);
 
@@ -57,7 +63,11 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Login failed. Please check your credentials.');
+      
+      const errorMessage = err.message || 
+        'Login failed. Please check your credentials and try again.';
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -92,6 +102,7 @@ export default function LoginPage() {
               onChange={handleChange}
               required
               autoFocus
+              error={!!error}
             />
 
             <TextField
@@ -104,6 +115,7 @@ export default function LoginPage() {
               value={formData.password}
               onChange={handleChange}
               required
+              error={!!error}
             />
 
             <Button

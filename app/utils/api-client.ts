@@ -3,6 +3,7 @@ import { getAuthToken } from './auth';
 interface ApiErrorResponse {
   detail?: string;
   message?: string;
+  error?: string;
 }
 
 class ApiError extends Error {
@@ -21,16 +22,26 @@ const handleApiError = async (response: Response): Promise<never> => {
 
   try {
     errorData = await response.json();
+    
     if (errorData.detail) {
       errorMessage = errorData.detail;
     } else if (errorData.message) {
       errorMessage = errorData.message;
+    } else if (errorData.error) {
+      errorMessage = errorData.error;
+    } else {
+      errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
     }
-  } catch (e) {
-    errorMessage = response.statusText || errorMessage;
+  } catch (parseError) {
+    errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
   }
 
-  console.error('API Error:', response.status, errorMessage);
+  console.error('API Error:', {
+    status: response.status,
+    message: errorMessage,
+    fullResponse: errorData
+  });
+
   throw new ApiError(errorMessage, response.status);
 };
 
@@ -97,23 +108,29 @@ export const apiClient = {
   },
 
   async login(email: string, password: string) {
-    const formData = new URLSearchParams();
-    formData.append('username', email);
-    formData.append('password', password);
+    try {
+      const formData = new URLSearchParams();
+      formData.append('username', email);
+      formData.append('password', password);
 
-    const response = await fetch('/api/py/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData,
-    });
+      const response = await fetch('/api/py/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: formData,
+      });
 
-    if (!response.ok) {
-      await handleApiError(response);
+      if (!response.ok) {
+        await handleApiError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
-
-    return response.json();
   },
 
   async register(email: string, password: string, fullName: string) {
