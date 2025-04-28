@@ -2,46 +2,63 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from "@clerk/nextjs";
-import { Box, Container } from '@mui/material';
+import { useAuth } from '@/app/components/AuthProvider';
+import { Box, Container, CircularProgress, Alert } from '@mui/material';
 import UploadForm from '@/app/components/cv/UploadForm';
 import Navbar from '@/app/components/layout/Navbar';
+import { apiClient } from '@/app/utils/api-client';
 
 export default function UploadPage() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [credits, setCredits] = useState(0);
+  const [loadingCredits, setLoadingCredits] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isLoaded) {
-      if (isSignedIn) {
-        fetchCredits();
-      } else {
+    if (!isLoading) {
+      if (!isAuthenticated) {
         router.push('/login');
+      } else {
+        fetchCredits();
       }
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoading, isAuthenticated, router]);
 
   const fetchCredits = async () => {
     try {
-      const response = await fetch('/api/py/credits/balance');
-      if (response.ok) {
-        const data = await response.json();
-        setCredits(data.balance);
-      }
+      const data = await apiClient.get('credits/balance');
+      setCredits(data.balance);
     } catch (err) {
       console.error('Error fetching credits:', err);
+      setError('Failed to fetch credits');
+    } finally {
+      setLoadingCredits(false);
     }
   };
 
-  if (!isLoaded) {
-    return null;
+  if (isLoading || loadingCredits) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+        <Alert severity="error" sx={{ mt: 4 }}>
+          {error}
+        </Alert>
+      </Box>
+    );
   }
 
   return (
     <Box>
       <Navbar />
-      <Container>
+      <Container maxWidth="md" sx={{ mt: 6, mb: 6 }}>
         <UploadForm credits={credits} />
       </Container>
     </Box>

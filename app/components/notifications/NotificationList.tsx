@@ -3,21 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/app/utils/api-client';
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from '@/app/components/AuthProvider';
 import {
-  Box,
-  Container,
-  Paper,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Typography,
-  Button,
-  CircularProgress,
-  Alert,
-  Chip,
+  Box, Container, Paper, List, ListItem, ListItemIcon, ListItemText, Divider, Typography, Button, CircularProgress, Alert, Chip,
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -35,33 +23,27 @@ interface Notification {
 
 export default function NotificationList() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [markingAll, setMarkingAll] = useState(false);
 
   useEffect(() => {
-    if (isLoaded) {
-      if (isSignedIn) {
-        fetchNotifications();
-      } else {
+    if (!isLoading) {
+      if (!isAuthenticated) {
         router.push('/login');
+      } else {
+        fetchNotifications();
       }
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoading, isAuthenticated, router]);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      
-      try {
-        const data = await apiClient.get('notifications');
-        setNotifications(data.notifications || []);
-      } catch (err) {
-        console.error('Error fetching notifications:', err);
-        setError('An error occurred while loading notifications');
-      }
+      const data = await apiClient.get('notifications');
+      setNotifications(data.notifications || []);
     } catch (err: any) {
       console.error('Error fetching notifications:', err);
       setError(err.message || 'An error occurred while loading notifications');
@@ -73,51 +55,40 @@ export default function NotificationList() {
   const markAsRead = async (notificationId: number) => {
     try {
       await apiClient.put(`notifications/${notificationId}/read`, {});
-      
       setNotifications(notifications.map(notification =>
         notification.id === notificationId ? { ...notification, is_read: true } : notification
       ));
     } catch (err: any) {
       setError(err.message || 'Failed to mark notification as read');
-      console.error('Mark as read error:', err);
     }
   };
 
   const markAllAsRead = async () => {
     try {
       setMarkingAll(true);
-      
       const data = await apiClient.put('notifications/read-all', {});
       setNotifications(data.notifications || []);
     } catch (err: any) {
       setError(err.message || 'Failed to mark all notifications as read');
-      console.error('Mark all as read error:', err);
     } finally {
       setMarkingAll(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.is_read) {
       markAsRead(notification.id);
     }
-    
     if (notification.review_id) {
       router.push(`/reviews/${notification.review_id}`);
     }
   };
 
-  if (!isLoaded || loading) {
+  if (isLoading || loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
         <CircularProgress />
@@ -130,38 +101,24 @@ export default function NotificationList() {
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
+        <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
       )}
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="h5" component="h1">
-            Notifications
-          </Typography>
+          <Typography variant="h5">Notifications</Typography>
           {unreadCount > 0 && (
-            <Chip 
-              label={`${unreadCount} unread`} 
-              color="primary" 
-              size="small" 
-              sx={{ ml: 2 }}
-            />
+            <Chip label={`${unreadCount} unread`} color="primary" size="small" sx={{ ml: 2 }} />
           )}
         </Box>
-        
         {unreadCount > 0 && (
-          <Button
-            startIcon={<MarkEmailReadIcon />}
-            onClick={markAllAsRead}
-            disabled={markingAll}
-          >
+          <Button startIcon={<MarkEmailReadIcon />} onClick={markAllAsRead} disabled={markingAll}>
             {markingAll ? 'Marking...' : 'Mark All as Read'}
           </Button>
         )}
       </Box>
 
-      <Paper sx={{ mb: 4 }}>
+      <Paper>
         {notifications.length > 0 ? (
           <List>
             {notifications.map((notification, index) => (
@@ -188,12 +145,7 @@ export default function NotificationList() {
                     }}
                   />
                   {!notification.is_read && (
-                    <Chip
-                      label="New"
-                      color="primary"
-                      size="small"
-                      sx={{ ml: 1 }}
-                    />
+                    <Chip label="New" color="primary" size="small" sx={{ ml: 1 }} />
                   )}
                 </ListItem>
                 {index < notifications.length - 1 && <Divider component="li" />}
@@ -203,9 +155,7 @@ export default function NotificationList() {
         ) : (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <NotificationsIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No Notifications
-            </Typography>
+            <Typography variant="h6" color="text.secondary" gutterBottom>No Notifications</Typography>
             <Typography variant="body2" color="text.secondary">
               You don't have any notifications yet. They will appear here when your CV reviews are processed.
             </Typography>
@@ -215,8 +165,3 @@ export default function NotificationList() {
     </Container>
   );
 }
-
-
-
-
-

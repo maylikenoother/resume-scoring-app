@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional, Dict, Any
 from functools import lru_cache
+import secrets
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CV Review API"
@@ -14,8 +15,9 @@ class Settings(BaseSettings):
         return self.POSTGRES_URL if self.POSTGRES_URL else self.DATABASE_URL
 
     SECRET_KEY: str
+
     ALGORITHM: str = "HS256" 
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 # 1 day
     
     HUGGINGFACE_API_KEY: str
     HUGGINGFACE_MODEL_ID: str = "google/flan-t5-large"

@@ -2,7 +2,7 @@
 import { apiClient } from '@/app/utils/api-client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from '@/app/components/AuthProvider';
 import {
   Box,
   Container,
@@ -47,7 +47,7 @@ interface Notification {
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,14 +62,14 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (isLoaded) {
-      if (isSignedIn) {
-        fetchDashboardData();
-      } else if (isLoaded && !isSignedIn) {
+    if (!isLoading) {
+      if (!isAuthenticated) {
         router.push('/login');
+      } else {
+        fetchDashboardData();
       }
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoading, isAuthenticated, router]);
 
   const fetchDashboardData = async () => {
     try {
@@ -147,7 +147,7 @@ export default function Dashboard() {
     }
   };
 
-  if (!isLoaded || loading) {
+  if (isLoading || loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
         <CircularProgress />

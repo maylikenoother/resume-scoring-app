@@ -2,23 +2,27 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from "@clerk/nextjs";
-import { Box } from '@mui/material';
-import CreditManager from '@/app/components/credits/CreditManager';
+import { useAuth } from '@/app/components/AuthProvider';
+import { Box, CircularProgress } from '@mui/material';
 import Navbar from '@/app/components/layout/Navbar';
+import CreditManager from '@/app/components/credits/CreditManager';
 
 export default function CreditsPage() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
+    if (!isLoading && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (!isLoaded) {
-    return null;
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
