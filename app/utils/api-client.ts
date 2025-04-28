@@ -1,9 +1,10 @@
-import { getAuthToken } from './auth';
+'use client';
+
+import { getAuthToken, setAuthToken } from './auth';
 
 interface ApiErrorResponse {
   detail?: string;
   message?: string;
-  error?: string;
 }
 
 class ApiError extends Error {
@@ -22,26 +23,16 @@ const handleApiError = async (response: Response): Promise<never> => {
 
   try {
     errorData = await response.json();
-    
     if (errorData.detail) {
       errorMessage = errorData.detail;
     } else if (errorData.message) {
       errorMessage = errorData.message;
-    } else if (errorData.error) {
-      errorMessage = errorData.error;
-    } else {
-      errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
     }
-  } catch (parseError) {
-    errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
+  } catch (e) {
+    errorMessage = response.statusText || errorMessage;
   }
 
-  console.error('API Error:', {
-    status: response.status,
-    message: errorMessage,
-    fullResponse: errorData
-  });
-
+  console.error('API Error:', response.status, errorMessage);
   throw new ApiError(errorMessage, response.status);
 };
 
@@ -59,8 +50,12 @@ export const apiClient = {
       headers['Accept'] = 'application/json';
     }
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+       headers['Authorization'] = `Bearer ${token}`
+      console.log('%c[apiClient] JWT Token:', 'color: green; font-weight: bold;', token);
+    } else {
+      console.warn('%c[apiClient] No JWT Token found.', 'color: orange; font-weight: bold;');
     }
+    console.log('%c[apiClient] Fetch Headers:', 'color: purple; font-weight: bold;', headers);
 
     const fetchOptions: RequestInit = {
       method,
@@ -108,30 +103,29 @@ export const apiClient = {
   },
 
   async login(email: string, password: string) {
-    try {
-      const formData = new URLSearchParams();
-      formData.append('username', email);
-      formData.append('password', password);
-
-      const response = await fetch('/api/py/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        await handleApiError(response);
-      }
-
-      return response.json();
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+    const formData = new URLSearchParams();
+    formData.append('username', email);
+    formData.append('password', password);
+  
+    const response = await fetch('/api/py/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData,
+    });
+  
+    if (!response.ok) {
+      await handleApiError(response);
     }
+  
+    const data = await response.json();
+
+    setAuthToken(data.access_token);
+  
+    return data;
   },
+  
 
   async register(email: string, password: string, fullName: string) {
     return this.post('auth/register', {

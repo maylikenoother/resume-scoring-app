@@ -28,10 +28,11 @@ async def get_credit_balance(
     credit_balance = result.scalars().first()
     
     if not credit_balance:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Credit balance not found",
-        )
+        # Automatically create CreditBalance if missing
+        credit_balance = CreditBalance(user_id=current_user.id, balance=settings.DEFAULT_CREDITS)
+        db.add(credit_balance)
+        await db.commit()
+        await db.refresh(credit_balance)
     
     return credit_balance
 

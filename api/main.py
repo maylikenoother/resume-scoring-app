@@ -44,7 +44,6 @@ async def lifespan(app: FastAPI):
     logger.info(f"Hugging Face API Key set: {bool(settings.HUGGINGFACE_API_KEY)}")
     logger.info(f"Using AI model: {settings.HUGGINGFACE_MODEL_ID}")
     logger.info(f"JWT Authentication enabled: {bool(settings.SECRET_KEY)}")
-    logger.info(f"Cloudinary integration enabled: {bool(settings.CLOUDINARY_CLOUD_NAME)}")
     
     db_url_parts = settings.get_database_url.split('@')
     if len(db_url_parts) > 1:
@@ -67,12 +66,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
@@ -81,7 +86,7 @@ app.include_router(reviews.router, prefix=settings.API_V1_STR)
 app.include_router(credits.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
 app.include_router(cloudinary.router, prefix=settings.API_V1_STR)
-app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth") 
+app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth")
 
 @app.get(f"{settings.API_V1_STR}/health")
 async def health_check():

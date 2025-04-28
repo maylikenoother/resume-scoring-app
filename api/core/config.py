@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     
     BACKGROUND_WORKERS: int = 2
 
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    # BACKEND_CORS_ORIGINS: List[str] = ["*"]
     
     CLOUDINARY_CLOUD_NAME: str
     CLOUDINARY_API_KEY: str
