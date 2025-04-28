@@ -2,9 +2,9 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, update
 
-from api.core.auth import get_current_active_user
+from api.core.auth import get_current_active_user, validate_resource_ownership
 from api.core.database import get_db
 from api.models.models import User, Notification
 from api.schemas.schemas import NotificationList, Notification as NotificationSchema
@@ -45,8 +45,7 @@ async def mark_notification_as_read(
 ) -> Any:
     result = await db.execute(
         select(Notification).where(
-            Notification.id == notification_id,
-            Notification.user_id == current_user.id
+            Notification.id == notification_id
         )
     )
     notification = result.scalars().first()
@@ -56,6 +55,8 @@ async def mark_notification_as_read(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Notification not found"
         )
+    
+    await validate_resource_ownership(current_user.id, notification.user_id)
     
     notification.is_read = True
     await db.commit()
@@ -105,3 +106,27 @@ async def get_unread_count(
     notifications = result.scalars().all()
     
     return len(notifications)
+
+@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_notification(
+    notification_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+) -> None:
+    result = await db.execute(
+        select(Notification).where(
+            Notification.id == notification_id
+        )
+    )
+    notification = result.scalars().first()
+    
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found"
+        )
+
+    await validate_resource_ownership(current_user.id, notification.user_id)
+    
+    await db.delete(notification)
+    await db.commit()

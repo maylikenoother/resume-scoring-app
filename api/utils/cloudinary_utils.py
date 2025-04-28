@@ -17,17 +17,7 @@ cloudinary.config(
 )
 
 async def upload_file_to_cloudinary(file_content: str, filename: str, folder: str = "cv_uploads") -> Dict[str, Any]:
-    """
-    Upload a file to Cloudinary
     
-    Args:
-        file_content: The content of the file as string
-        filename: The original filename
-        folder: The folder to store the file in Cloudinary (defaults to 'cv_uploads')
-        
-    Returns:
-        Dictionary with upload info including 'secure_url' for the uploaded file
-    """
     try:
         temp_dir = Path("temp")
         temp_dir.mkdir(exist_ok=True)

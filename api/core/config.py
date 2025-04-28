@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from functools import lru_cache
 
 class Settings(BaseSettings):
@@ -14,10 +14,12 @@ class Settings(BaseSettings):
         return self.POSTGRES_URL if self.POSTGRES_URL else self.DATABASE_URL
 
     SECRET_KEY: str 
-    
+    ALGORITHM: str = "RS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
     CLERK_SECRET_KEY: str
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: str
-    CLERK_JWT_KEY: str = None
+    CLERK_JWT_KEY: Optional[str] = None
     CLERK_FRONTEND_API: str = "https://magnetic-longhorn-34.clerk.accounts.dev"
     CLERK_AUDIENCE: str = "cv-review-app"
     
@@ -26,9 +28,15 @@ class Settings(BaseSettings):
     
     DEFAULT_CREDITS: int = 5
     REVIEW_CREDIT_COST: int = 1 
+    PRICING_TIERS: Dict[str, Dict[str, Any]] = {
+        "basic": {"amount": 5, "price": 4.99},
+        "standard": {"amount": 15, "price": 9.99},
+        "premium": {"amount": 50, "price": 24.99}
+    }
     
+    # System settings
     BACKGROUND_WORKERS: int = 2
-    
+
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
     
     CLOUDINARY_CLOUD_NAME: str
@@ -37,9 +45,8 @@ class Settings(BaseSettings):
     
     NEXT_PUBLIC_API_URL: str
     API_BASE_URL: str
-
-    ALGORITHM: str = "RS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  
+    
+    ADMIN_USERS: List[str] = [] 
     
     model_config = SettingsConfigDict(
         env_file=".env",

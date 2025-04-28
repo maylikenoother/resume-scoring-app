@@ -9,7 +9,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "cd api && pytest"
+    "test": "cd api && pytest",
+    "db:migrate": "cd api && alembic upgrade head",
+    "db:migrate:create": "cd api && alembic revision --autogenerate -m",
+    "db:migrate:rollback": "cd api && alembic downgrade -1",
+    "db:reset": "cd api && python create_tables.py --reset"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.18.0",
