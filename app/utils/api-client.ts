@@ -41,37 +41,48 @@ export const apiClient = {
   async get(endpoint: string) {
     try {
       const token = await this.getToken();
-      
+  
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
       };
-      
+  
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      
+  
       const response = await fetch(`/api/py/${endpoint.replace(/^\//, '')}`, {
         method: 'GET',
         headers,
         cache: 'no-store',
       });
-      
+  
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           console.error(`Authentication error when fetching ${endpoint}`);
           throw new Error("Please sign in to access this content");
         }
-        
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Error fetching ${endpoint}`);
+  
+        let errorMessage = `Error fetching ${endpoint}`;
+  
+        try {
+          const errorData = await response.json();
+          if (errorData && typeof errorData === 'object' && 'detail' in errorData) {
+            errorMessage = errorData.detail;
+          }
+        } catch (err) {
+          console.warn(`Could not parse error JSON for ${endpoint}`);
+        }
+  
+        throw new Error(errorMessage);
       }
-      
+  
       return response.json();
     } catch (error) {
       console.error(`API client error for GET ${endpoint}:`, error);
       throw error;
     }
   },
+  
   
   async post(endpoint: string, data: any) {
     try {
