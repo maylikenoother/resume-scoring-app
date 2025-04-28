@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/app/components/AuthProvider";
 import Link from 'next/link';
 import {
   Box,
@@ -24,9 +24,9 @@ import Navbar from './components/layout/Navbar';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  if (!isLoaded) {
+  if (isLoading) {
     return null;
   }
 
@@ -34,7 +34,6 @@ export default function HomePage() {
     <Box>
       <Navbar />
       
-      {/* Hero Section */}
       <Paper 
         sx={{
           position: 'relative',
@@ -61,13 +60,13 @@ export default function HomePage() {
                 variant="contained"
                 size="large"
                 sx={{ mr: 2, bgcolor: 'white', color: 'primary.dark' }}
-                onClick={() => router.push(isSignedIn ? '/upload' : '/register')}
+                onClick={() => router.push(isAuthenticated ? '/upload' : '/register')}
                 startIcon={<CloudUploadIcon />}
               >
-                {isSignedIn ? 'Upload CV' : 'Get Started'}
+                {isAuthenticated ? 'Upload CV' : 'Get Started'}
               </Button>
               
-              {!isSignedIn && (
+              {!isAuthenticated && (
                 <Button
                   variant="outlined"
                   size="large"
@@ -150,16 +149,15 @@ export default function HomePage() {
                 variant="contained"
                 size="large"
                 sx={{ bgcolor: 'white', color: 'primary.main' }}
-                onClick={() => router.push(isSignedIn ? '/upload' : '/register')}
+                onClick={() => router.push(isAuthenticated ? '/upload' : '/register')}
               >
-                {isSignedIn ? 'Upload CV' : 'Sign Up Now'}
+                {isAuthenticated ? 'Upload CV' : 'Sign Up Now'}
               </Button>
             </Grid>
           </Grid>
         </Container>
       </Box>
 
-      {/* Footer */}
       <Box component="footer" sx={{ bgcolor: 'background.paper', py: 6 }}>
         <Container maxWidth="lg">
           <Typography variant="body2" color="text.secondary" align="center">

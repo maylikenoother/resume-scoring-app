@@ -2,22 +2,22 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from "@clerk/nextjs";
 import { Box } from '@mui/material';
 import Dashboard from '@/app/components/dashboard/Dashboard';
 import Navbar from '@/app/components/layout/Navbar';
+import { useAuth } from '@/app/components/AuthProvider';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
+    if (!isLoading && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (!isLoaded) {
+  if (isLoading) {
     return null;
   }
 

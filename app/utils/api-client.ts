@@ -1,3 +1,5 @@
+import { getAuthToken } from './auth';
+
 interface ApiErrorResponse {
   detail?: string;
   message?: string;
@@ -34,22 +36,11 @@ const handleApiError = async (response: Response): Promise<never> => {
 
 export const apiClient = {
   async getToken(): Promise<string | null> {
-    try {
-      const response = await fetch('/api/auth/token', { credentials: 'include' });
-      if (!response.ok) {
-        console.error(`Failed to fetch token: ${response.status}`);
-        return null;
-      }
-      const data = await response.json();
-      return data.token;
-    } catch (error) {
-      console.error('Error fetching token:', error);
-      return null;
-    }
+    return getAuthToken() || null;
   },
 
   async request<T = any>(method: string, endpoint: string, body?: any, isUpload: boolean = false): Promise<T> {
-    const token = await this.getToken();
+    const token = getAuthToken();
     
     const headers: HeadersInit = {};
     if (!isUpload) {
@@ -103,5 +94,33 @@ export const apiClient = {
       formData.append(key, value);
     });
     return this.request('POST', endpoint, formData, true);
+  },
+
+  async login(email: string, password: string) {
+    const formData = new URLSearchParams();
+    formData.append('username', email);
+    formData.append('password', password);
+
+    const response = await fetch('/api/py/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      await handleApiError(response);
+    }
+
+    return response.json();
+  },
+
+  async register(email: string, password: string, fullName: string) {
+    return this.post('auth/register', {
+      email,
+      password,
+      full_name: fullName,
+    });
   },
 };

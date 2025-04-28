@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser } from "@clerk/nextjs";
-import { SignOutButton } from "@clerk/nextjs";
+import { useAuth } from '@/app/components/AuthProvider';
 import { apiClient } from '@/app/utils/api-client';
 import Link from 'next/link';
 import {
@@ -38,8 +37,7 @@ const pages = [
 
 export default function Navbar() {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
   const [anchorElNav, setAnchorElNav] = useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -47,10 +45,10 @@ export default function Navbar() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   useEffect(() => {
-    if (isSignedIn) {
+    if (isAuthenticated) {
       fetchUserData();
     }
-  }, [isSignedIn]);
+  }, [isAuthenticated]);
 
   const fetchUserData = async () => {
     try {
@@ -103,7 +101,12 @@ export default function Navbar() {
     handleCloseUserMenu();
   };
 
-  if (!isLoaded) {
+  const handleLogout = () => {
+    logout();
+    handleCloseUserMenu();
+  };
+
+  if (isLoading) {
     return null;
   }
 
@@ -129,7 +132,7 @@ export default function Navbar() {
             </Typography>
 
             <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-              {isSignedIn && (
+              {isAuthenticated && (
                 <>
                   <IconButton
                     size="large"
@@ -187,7 +190,7 @@ export default function Navbar() {
             </Typography>
 
             <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-              {isSignedIn && pages.map((page) => (
+              {isAuthenticated && pages.map((page) => (
                 <Button
                   key={page.name}
                   onClick={() => navigateTo(page.href)}
@@ -199,7 +202,7 @@ export default function Navbar() {
             </Box>
 
             <Box sx={{ flexGrow: 0 }}>
-              {isSignedIn ? (
+              {isAuthenticated ? (
                 <>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Typography sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
@@ -217,11 +220,10 @@ export default function Navbar() {
                     <Tooltip title="Open settings">
                       <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                         <Avatar 
-                          src={user?.imageUrl}
                           alt={user?.fullName || ''}
                           sx={{ bgcolor: 'secondary.main' }}
                         >
-                          {user?.firstName?.charAt(0) || user?.username?.charAt(0) || 'U'}
+                          {user?.fullName?.charAt(0) || 'U'}
                         </Avatar>
                       </IconButton>
                     </Tooltip>
@@ -249,17 +251,10 @@ export default function Navbar() {
                     
                     <Divider />
                     
-                    <MenuItem onClick={handleCloseUserMenu}>
-                      <SignOutButton>
-                        <button style={{ all: 'unset', width: '100%' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
-                            <span style={{ width: '100%', textAlign: 'center' }}>Logout</span>
-                          </Box>
-                        </button>
-                      </SignOutButton>
+                    <MenuItem onClick={handleLogout}>
+                      <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
+                      <Typography textAlign="center">Logout</Typography>
                     </MenuItem>
-
                   </Menu>
                 </>
               ) : (

@@ -13,9 +13,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    clerk_user_id = Column(String, unique=True, index=True)
-    email = Column(String, index=True, nullable=True)
+    email = Column(String, unique=True, index=True)
     full_name = Column(String, nullable=True)
+    hashed_password = Column(String, nullable=False)  # Added hashed_password field
     is_active = Column(Boolean, default=True)
     role = Column(String, default=UserRole.USER)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -36,6 +36,7 @@ class CreditBalance(Base):
 
     user = relationship("User", back_populates="credit_balance")
     transactions = relationship("CreditTransaction", back_populates="credit_balance")
+
 
 class TransactionType(str, enum.Enum):
     PURCHASE = "purchase"

@@ -1,53 +1,58 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { jwtDecode } from "jwt-decode";
 
 const publicPaths = [
   '/', '/login', '/register', '/docs', '/debug',
-  '/api/py/health', '/verify', '/forgot-password', '/api/auth/token'
+  '/api/py/health', '/api/py/auth/login', '/api/py/auth/register'
 ];
 
-const publicApiPaths = [
-  '/api/py/auth/token', '/api/py/health', '/api/auth/token'
-];
+function isPublicPath(path: string): boolean {
+  return publicPaths.some(publicPath => path === publicPath || path.startsWith(`${publicPath}/`));
+}
 
-const isPublicRoute = createRouteMatcher([...publicPaths, ...publicApiPaths]);
+function isValidToken(token: string): boolean {
+  try {
+    const decoded = jwtDecode<{ exp: number }>(token);
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    return decoded.exp > currentTime;
+  } catch (error) {
+    return false;
+  }
+}
 
-export default clerkMiddleware((auth, req: NextRequest) => {
-  const pathname = req.nextUrl?.pathname || "/"; 
-
-  if (isPublicRoute(req)) {
+export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  
+  if (isPublicPath(path)) {
     return NextResponse.next();
   }
 
-  const { userId, protect } = auth();
-
-  if (!userId) {
-    const signInUrl = new URL('/login', req.url);
-
-    if (!pathname.startsWith('/api/')) {
-      signInUrl.searchParams.set('redirect_url', pathname);
-      return NextResponse.redirect(signInUrl);
+  const token = request.cookies.get('access_token')?.value;
+  if (path.startsWith('/api/')) {
+    if (!token || !isValidToken(token)) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Authentication required' }),
+        {
+          status: 401,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
     }
-
-    return new NextResponse(
-      JSON.stringify({ error: 'Authentication required' }),
-      {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    return NextResponse.next();
   }
-
-  protect();
-
+  if (!token || !isValidToken(token)) {
+    const url = new URL('/login', request.url);
+    url.searchParams.set('from', path);
+    return NextResponse.redirect(url);
+  }
+  
   return NextResponse.next();
-}, {
-  signInUrl: '/login'
-});
+}
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public|_next).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 };

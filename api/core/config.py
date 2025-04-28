@@ -13,15 +13,9 @@ class Settings(BaseSettings):
     def get_database_url(self) -> str:
         return self.POSTGRES_URL if self.POSTGRES_URL else self.DATABASE_URL
 
-    SECRET_KEY: str 
-    ALGORITHM: str = "RS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-
-    CLERK_SECRET_KEY: str
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: str
-    CLERK_JWT_KEY: Optional[str] = None
-    CLERK_FRONTEND_API: str = "https://magnetic-longhorn-34.clerk.accounts.dev"
-    CLERK_AUDIENCE: str = "cv-review-app"
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256" 
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     
     HUGGINGFACE_API_KEY: str
     HUGGINGFACE_MODEL_ID: str = "google/flan-t5-large"
@@ -34,7 +28,6 @@ class Settings(BaseSettings):
         "premium": {"amount": 50, "price": 24.99}
     }
     
-    # System settings
     BACKGROUND_WORKERS: int = 2
 
     BACKEND_CORS_ORIGINS: List[str] = ["*"]

@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"Hugging Face API Key set: {bool(settings.HUGGINGFACE_API_KEY)}")
     logger.info(f"Using AI model: {settings.HUGGINGFACE_MODEL_ID}")
-    logger.info(f"Clerk integration enabled: {bool(settings.CLERK_SECRET_KEY)}")
+    logger.info(f"JWT Authentication enabled: {bool(settings.SECRET_KEY)}")
     logger.info(f"Cloudinary integration enabled: {bool(settings.CLOUDINARY_CLOUD_NAME)}")
     
     db_url_parts = settings.get_database_url.split('@')
@@ -67,7 +67,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS
 origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
 app.add_middleware(
     CORSMiddleware,
@@ -78,7 +77,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Include routers
 app.include_router(reviews.router, prefix=settings.API_V1_STR)
 app.include_router(credits.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)

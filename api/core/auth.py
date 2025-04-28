@@ -1,15 +1,12 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-import json
-import base64
-import httpx
-from fastapi import Depends, HTTPException, status, Request, APIRouter
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, jwk, JWTError
-from jose.utils import base64url_decode
-from pydantic import ValidationError, BaseModel
+import jwt
+from fastapi import Depends, HTTPException, status, Request, APIRouter, Cookie
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from pydantic import BaseModel
 import logging
 
 from api.core.config import settings
@@ -17,120 +14,167 @@ from api.core.database import get_db
 from api.models.models import User
 
 logger = logging.getLogger(__name__)
-security = HTTPBearer()
 router = APIRouter()
 
-_JWKS_CACHE = None
-_JWKS_CACHE_TIMESTAMP = None
-_JWKS_CACHE_EXPIRY_SECONDS = 3600 
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-async def get_clerk_jwks() -> Dict[str, Any]:
-    """Fetch the JWKS from Clerk's API to validate tokens"""
-    global _JWKS_CACHE, _JWKS_CACHE_TIMESTAMP
+# Token handling
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against a hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """Generate a password hash."""
+    return pwd_context.hash(password)
+
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
+    """Authenticate a user by email and password."""
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
     
-    current_time = datetime.now()
-    if (_JWKS_CACHE and _JWKS_CACHE_TIMESTAMP and 
-        (current_time - _JWKS_CACHE_TIMESTAMP).total_seconds() < _JWKS_CACHE_EXPIRY_SECONDS):
-        return _JWKS_CACHE
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    
+    return user
+
+def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    """Create a JWT access token."""
+    to_encode = data.copy()
+    
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
+    """Get the current user from JWT token."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     
     try:
-        async with httpx.AsyncClient() as client:
-            jwks_url = f"{settings.CLERK_FRONTEND_API}/.well-known/jwks.json"
-            logger.info(f"Fetching JWKS from {jwks_url}")
-            response = await client.get(jwks_url)
-            response.raise_for_status()
-            _JWKS_CACHE = response.json()
-            _JWKS_CACHE_TIMESTAMP = current_time
-            return _JWKS_CACHE
-    except Exception as e:
-        logger.error(f"Error fetching JWKS: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch JWKS: {str(e)}"
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: int = int(payload.get("sub"))
+        
+        if user_id is None:
+            raise credentials_exception
+            
+    except jwt.PyJWTError:
+        raise credentials_exception
+        
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    
+    if user is None:
+        raise credentials_exception
+        
+    return user
 
-async def verify_clerk_jwt(token: str) -> Dict[str, Any]:
-    """Verify a Clerk JWT token using RS256 and JWKS"""
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+    """Dependency to get current active user."""
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+        
+    return current_user
+
+async def get_user_from_cookie(
+    access_token: Optional[str] = Cookie(None, alias="access_token"),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    """Get current user from cookie."""
+    if not access_token:
+        return None
+        
     try:
-        header_segment = token.split('.')[0]
-        padded_header = header_segment + '=' * (4 - len(header_segment) % 4)
-        header_data = json.loads(base64.b64decode(padded_header).decode('utf-8'))
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: int = int(payload.get("sub"))
         
-        kid = header_data.get('kid')
-        if not kid:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="No 'kid' found in JWT header",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        jwks = await get_clerk_jwks()
-
-        key_data = None
-        for key in jwks.get('keys', []):
-            if key.get('kid') == kid:
-                key_data = key
-                break
+        if user_id is None:
+            return None
+            
+        result = await db.execute(select(User).where(User.id == user_id))
+        return result.scalars().first()
         
-        if not key_data:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="No matching key found in JWKS",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        public_key = jwk.construct(key_data)
+    except jwt.PyJWTError:
+        return None
 
-        payload = jwt.decode(
-            token,
-            public_key.to_pem().decode('utf-8'),
-            algorithms=[key_data.get('alg', 'RS256')],
-            audience=settings.CLERK_AUDIENCE,
-            options={"verify_exp": True}
+async def validate_resource_ownership(user_id: int, resource_user_id: int) -> bool:
+    """Validate if a user owns a resource"""
+    if user_id != resource_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this resource"
         )
-        
-        return payload
-    except jwt.ExpiredSignatureError:
-        logger.warning("JWT token has expired")
+    return True
+
+class UserRegisterRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str
+
+@router.post("/login")
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, str]:
+    """Login route to get access token."""
+    user = await authenticate_user(db, form_data.username, form_data.password)
+    
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.JWTClaimsError as e:
-        logger.warning(f"JWT claims validation failed: {e}")
+        
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "email": user.email,
+        "full_name": user.full_name
+    }
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register(
+    user_data: UserRegisterRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(User).where(User.email == user_data.email))
+    existing_user = result.scalars().first()
+    
+    if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"JWT claims validation failed: {str(e)}",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except (JWTError, ValidationError, Exception) as e:
-        logger.error(f"Invalid token: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User with this email already exists"
         )
 
-async def get_user_by_clerk_id(db: AsyncSession, clerk_user_id: str) -> Optional[User]:
-    """Get a user by their Clerk ID"""
-    result = await db.execute(select(User).where(User.clerk_user_id == clerk_user_id))
-    return result.scalars().first()
-
-async def create_user_from_clerk(
-    db: AsyncSession, 
-    clerk_user_id: str, 
-    email: Optional[str] = None, 
-    full_name: Optional[str] = None
-) -> User:
-    """Create a new user from Clerk data"""
+    hashed_password = get_password_hash(user_data.password)
+    
     new_user = User(
-        clerk_user_id=clerk_user_id,
-        email=email,
-        full_name=full_name,
+        email=user_data.email,
+        full_name=user_data.full_name,
+        hashed_password=hashed_password,
         is_active=True,
         role="user"
     )
+    
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
@@ -143,68 +187,8 @@ async def create_user_from_clerk(
     db.add(credit_balance)
     await db.commit()
     
-    return new_user
-
-async def get_current_user(
-    db: AsyncSession = Depends(get_db),
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> User:
-    """Dependency to get current user from Clerk JWT token"""
-    try:
-        token = credentials.credentials
-        payload = await verify_clerk_jwt(token)
-        
-        clerk_user_id = payload.get("sub")
-        if not clerk_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        user = await get_user_by_clerk_id(db, clerk_user_id)
-        if not user:
-            email = payload.get("email")
-            full_name = payload.get("name") or payload.get("full_name")
-            user = await create_user_from_clerk(db, clerk_user_id, email, full_name)
-            
-        needs_update = False
-        if payload.get("email") and user.email != payload.get("email"):
-            user.email = payload.get("email")
-            needs_update = True
-            
-        full_name = payload.get("name") or payload.get("full_name")
-        if full_name and user.full_name != full_name:
-            user.full_name = full_name
-            needs_update = True
-            
-        if needs_update:
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-            
-        return user
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Authentication error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
-    """Dependency to get current active user"""
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
-
-async def validate_resource_ownership(user_id: int, resource_user_id: int) -> bool:
-    """Validate if a user owns a resource"""
-    if user_id != resource_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this resource"
-        )
-    return True
+    return {
+        "id": new_user.id,
+        "email": new_user.email,
+        "full_name": new_user.full_name
+    }

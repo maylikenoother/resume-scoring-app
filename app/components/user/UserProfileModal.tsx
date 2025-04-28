@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useAuth } from '@/app/components/AuthProvider';
+import { apiClient } from '@/app/utils/api-client';
 import {
   Box,
   Button,
@@ -29,26 +30,24 @@ interface UserProfileModalProps {
 }
 
 export default function UserProfileModal({ open, onClose }: UserProfileModalProps) {
-  const { user, isLoaded, isSignedIn } = useUser();
+  const { user, isLoading } = useAuth();
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
   });
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && user) {
+    if (user) {
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.primaryEmailAddress?.emailAddress || '',
+        fullName: user.fullName || '',
+        email: user.email || '',
       });
     }
-  }, [isLoaded, isSignedIn, user, open]);
+  }, [user, open]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -68,16 +67,11 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
     setSaving(true);
     
     try {
-      await user.update({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+      await apiClient.put('auth/me', {
+        full_name: formData.fullName,
       });
       
-      if (formData.email !== user.primaryEmailAddress?.emailAddress) {
-        setError('Email changes require verification. Please use the Clerk verification flow to update your email.');
-      } else {
-        setSuccess(true);
-      }
+      setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'An error occurred while updating your profile.');
       console.error('Profile update error:', err);
@@ -89,9 +83,8 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
   const resetForm = () => {
     if (user) {
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.primaryEmailAddress?.emailAddress || '',
+        fullName: user.fullName || '',
+        email: user.email || '',
       });
     }
     setSuccess(false);
@@ -133,28 +126,20 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
             </IconButton>
           </Box>
 
-          {!isLoaded ? (
+          {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
               <CircularProgress />
             </Box>
-          ) : !isSignedIn || !user ? (
+          ) : !user ? (
             <Alert severity="error">You must be signed in to edit your profile.</Alert>
           ) : (
             <form onSubmit={handleSubmit}>
               <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
-                {user.imageUrl ? (
-                  <Avatar 
-                    src={user.imageUrl} 
-                    alt={user.fullName || 'User'} 
-                    sx={{ width: 100, height: 100 }}
-                  />
-                ) : (
-                  <Avatar 
-                    sx={{ width: 100, height: 100, bgcolor: 'primary.main', fontSize: 40 }}
-                  >
-                    {user.firstName?.[0] || user.primaryEmailAddress?.emailAddress?.[0] || '?'}
-                  </Avatar>
-                )}
+                <Avatar 
+                  sx={{ width: 100, height: 100, bgcolor: 'primary.main', fontSize: 40 }}
+                >
+                  {user.fullName?.[0] || user.email?.[0] || '?'}
+                </Avatar>
               </Box>
 
               {success && (
@@ -172,19 +157,9 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
               <Stack spacing={3}>
                 <TextField
                   fullWidth
-                  label="First Name"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  variant="outlined"
-                  required
-                />
-                
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  name="lastName"
-                  value={formData.lastName}
+                  label="Full Name"
+                  name="fullName"
+                  value={formData.fullName}
                   onChange={handleChange}
                   variant="outlined"
                   required
@@ -195,12 +170,11 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
                   label="Email"
                   name="email"
                   value={formData.email}
-                  onChange={handleChange}
                   variant="outlined"
                   type="email"
                   required
                   disabled
-                  helperText="Email changes require verification. Please use the Clerk account settings to update your email."
+                  helperText="Email cannot be changed directly. Please contact support."
                 />
                 
                 <Stack direction="row" spacing={2} justifyContent="flex-end">
