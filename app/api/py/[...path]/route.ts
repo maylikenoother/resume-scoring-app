@@ -1,76 +1,5 @@
+// app/api/py/[...path]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from "@clerk/nextjs/server";
-
-async function handleApiRequest(
-  request: NextRequest, 
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-  params: { path: string[] }
-) {
-  const path = params.path.join('/');
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-  const url = `${apiBaseUrl}/api/py/${path}${request.nextUrl.search}`;
-
-  try {
-    const { getToken } = await auth();
-    const token = await getToken({template: 'cv-review-app'});
-    
-    const headers = new Headers();
-    
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-    
-    headers.set('Accept', 'application/json');
-    headers.set('Content-Type', 'application/json');
-    
-    let body = null;
-    if (method !== 'GET') {
-      try {
-        body = await request.json();
-      } catch (jsonError) {
-        console.error('Error parsing request body:', jsonError);
-      }
-    }
-
-    const fetchOptions: RequestInit = {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      cache: 'no-store',
-    };
-
-    const response = await fetch(url, fetchOptions);
-
-    const contentType = response.headers.get('content-type') || '';
-    
-    if (!contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error('Non-JSON response:', text);
-      
-      return NextResponse.json({ 
-        error: 'Received non-JSON response from API',
-        details: text.slice(0, 500)
-      }, { status: 500 });
-    }
-    
-    const data = await response.json().catch(err => {
-      console.error('JSON parsing error:', err);
-      return { 
-        error: 'Failed to parse API response',
-        status: response.status 
-      };
-    });
-    
-    return NextResponse.json(data, { status: response.status });
-
-  } catch (error) {
-    console.error('API proxy error:', error);
-    return NextResponse.json({ 
-      error: 'Failed to fetch data from API',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
-  }
-}
 
 export async function GET(
   request: NextRequest,
@@ -98,4 +27,153 @@ export async function DELETE(
   { params }: { params: { path: string[] } }
 ) {
   return handleApiRequest(request, 'DELETE', params);
+}
+
+async function handleApiRequest(
+  request: NextRequest, 
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  params: { path: string[] }
+) {
+  const path = params.path.join('/');
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const url = `${apiBaseUrl}/api/py/${path}${request.nextUrl.search}`;
+
+  try {
+    // Forward headers from the original request
+    const headers = new Headers();
+    
+    // Get auth token from cookies
+    const cookies = request.cookies;
+    const authToken = cookies.get('access_token')?.value;
+    
+    // Set Authorization header if token exists in cookies
+    if (authToken) {
+      headers.set('Authorization', `Bearer ${authToken}`);
+    }
+    // Also check for Authorization header in the request
+    else {
+      const authHeader = request.headers.get('authorization');
+      if (authHeader) {
+        headers.set('Authorization', authHeader);
+      }
+    }
+    
+    // Set content type and accept headers
+    headers.set('Accept', 'application/json');
+    
+    const contentType = request.headers.get('content-type');
+    if (contentType) {
+      headers.set('Content-Type', contentType);
+    }
+    
+    // For non-GET requests, get the body
+    let requestBody: BodyInit | undefined = undefined;
+    
+    if (method !== 'GET') {
+      const contentType = request.headers.get('content-type') || '';
+      
+      if (contentType.includes('multipart/form-data')) {
+        try {
+          const formData = await request.formData();
+          requestBody = formData;
+        } catch (e) {
+          console.error('Failed to parse form data:', e);
+        }
+      } else if (contentType.includes('application/json')) {
+        try {
+          const json = await request.json();
+          requestBody = JSON.stringify(json);
+        } catch (e) {
+          console.error('Failed to parse JSON:', e);
+        }
+      } else if (contentType.includes('application/x-www-form-urlencoded')) {
+        try {
+          const text = await request.text();
+          requestBody = text;
+        } catch (e) {
+          console.error('Failed to parse form data:', e);
+        }
+      } else {
+        try {
+          const text = await request.text();
+          requestBody = text;
+        } catch (e) {
+          console.error('Failed to parse request body:', e);
+        }
+      }
+    }
+
+    const fetchOptions: RequestInit = {
+      method,
+      headers,
+      body: requestBody,
+      redirect: 'follow',
+    };
+
+    const response = await fetch(url, fetchOptions);
+    
+    // Get response data
+    let responseData;
+    let responseText;
+    
+    const responseType = response.headers.get('content-type') || '';
+    
+    if (responseType.includes('application/json')) {
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        try {
+          responseText = await response.text();
+          responseData = { 
+            error: 'Failed to parse JSON response',
+            text: responseText
+          };
+        } catch (textError) {
+          responseData = { 
+            error: 'Failed to parse response from API',
+            text: 'No content available'
+          };
+        }
+      }
+    } else {
+      try {
+        responseText = await response.text();
+        responseData = { content: responseText };
+      } catch (e) {
+        responseData = { 
+          error: 'Failed to read response from API',
+          text: 'No content available'
+        };
+      }
+    }
+    
+    // Create response with appropriate headers
+    const nextResponse = NextResponse.json(responseData, { 
+      status: response.status,
+      statusText: response.statusText 
+    });
+    
+    // Forward important headers from the backend response
+    const headersToCopy = [
+      'cache-control',
+      'content-disposition',
+      'content-type',
+    ];
+    
+    for (const header of headersToCopy) {
+      const value = response.headers.get(header);
+      if (value) {
+        nextResponse.headers.set(header, value);
+      }
+    }
+    
+    return nextResponse;
+
+  } catch (error) {
+    console.error('API proxy error:', error);
+    return NextResponse.json({ 
+      error: 'Failed to communicate with backend API',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
 }

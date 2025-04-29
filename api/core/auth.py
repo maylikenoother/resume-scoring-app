@@ -46,7 +46,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=30)
 
     to_encode.update({"exp": expire})
 
@@ -74,7 +74,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
         if user_id is None:
             raise credentials_exception
-
+            
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -82,6 +82,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
             headers={"WWW-Authenticate": "Bearer"},
         )
     except jwt.InvalidTokenError:
+        raise credentials_exception
+    except Exception as e:
+        logger.error(f"Token validation error: {e}")
         raise credentials_exception
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -103,7 +106,7 @@ class RegisterUser(BaseModel):
     password: str
     full_name: Optional[str] = None
 
-@router.post("/register")
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(
     user_in: RegisterUser,
     db: AsyncSession = Depends(get_db)
@@ -126,11 +129,18 @@ async def register(
         await db.commit()
         await db.refresh(new_user)
 
-        return {"message": "User registered successfully"}
+        return {
+            "id": new_user.id,
+            "email": new_user.email,
+            "full_name": new_user.full_name
+        }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Unexpected registration error: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during registration"
@@ -170,7 +180,7 @@ async def login(
                 detail="User account is not active"
             )
 
-        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token_expires = timedelta(minutes=30)
         access_token = create_access_token(
             data={"sub": str(user.id)},
             expires_delta=access_token_expires
@@ -186,7 +196,6 @@ async def login(
 
     except HTTPException:
         raise
-
     except Exception as e:
         logger.error(f"Unexpected login error: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -213,6 +222,9 @@ async def get_user_from_cookie(
         return result.scalars().first()
 
     except jwt.PyJWTError:
+        return None
+    except Exception as e:
+        logger.error(f"Error getting user from cookie: {e}")
         return None
 
 async def validate_resource_ownership(user_id: int, resource_user_id: int) -> bool:

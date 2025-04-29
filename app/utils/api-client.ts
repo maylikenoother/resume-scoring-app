@@ -1,6 +1,7 @@
+// api/utils/api-client.ts
 'use client';
 
-import { getAuthToken, setAuthToken } from './auth';
+import { getAuthToken, removeAuthToken, setAuthToken, setUserData } from './auth';
 
 interface ApiErrorResponse {
   detail?: string;
@@ -19,48 +20,38 @@ class ApiError extends Error {
 
 const handleApiError = async (response: Response): Promise<never> => {
   let errorMessage = 'An unexpected error occurred';
-  let errorData: ApiErrorResponse = {};
-
+  
   try {
-    errorData = await response.json();
-    if (errorData.detail) {
-      errorMessage = errorData.detail;
-    } else if (errorData.message) {
-      errorMessage = errorData.message;
-    }
+    const errorData = await response.json() as ApiErrorResponse;
+    errorMessage = errorData.detail || errorData.message || errorMessage;
   } catch (e) {
     errorMessage = response.statusText || errorMessage;
   }
-
-  console.error('API Error:', response.status, errorMessage);
+  
   throw new ApiError(errorMessage, response.status);
 };
 
 export const apiClient = {
-  async getToken(): Promise<string | null> {
-    return getAuthToken() || null;
-  },
-
   async request<T = any>(method: string, endpoint: string, body?: any, isUpload: boolean = false): Promise<T> {
+    // Get token from cookie
     const token = getAuthToken();
     
     const headers: HeadersInit = {};
+    
     if (!isUpload) {
       headers['Content-Type'] = 'application/json';
-      headers['Accept'] = 'application/json';
     }
+    headers['Accept'] = 'application/json';
+    
+    // CRITICAL: Attach the token as a Bearer token in Authorization header
     if (token) {
-       headers['Authorization'] = `Bearer ${token}`
-      console.log('%c[apiClient] JWT Token:', 'color: green; font-weight: bold;', token);
-    } else {
-      console.warn('%c[apiClient] No JWT Token found.', 'color: orange; font-weight: bold;');
+      headers['Authorization'] = `Bearer ${token}`;
     }
-    console.log('%c[apiClient] Fetch Headers:', 'color: purple; font-weight: bold;', headers);
 
     const fetchOptions: RequestInit = {
       method,
       headers,
-      credentials: 'include',
+      credentials: 'include', // Important: include cookies with the request
       cache: 'no-store',
     };
 
@@ -68,13 +59,23 @@ export const apiClient = {
       fetchOptions.body = isUpload ? body : JSON.stringify(body);
     }
 
-    const response = await fetch(`/api/py/${endpoint.replace(/^\//, '')}`, fetchOptions);
+    try {
+      const response = await fetch(`/api/py/${endpoint.replace(/^\//, '')}`, fetchOptions);
 
-    if (!response.ok) {
-      await handleApiError(response);
+      if (!response.ok) {
+        if (response.status === 401) {
+          removeAuthToken();
+        }
+        await handleApiError(response);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(`Request failed: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
-
-    return response.json();
   },
 
   get<T = any>(endpoint: string): Promise<T> {
@@ -107,26 +108,47 @@ export const apiClient = {
     formData.append('username', email);
     formData.append('password', password);
   
-    const response = await fetch('/api/py/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData,
-    });
-  
-    if (!response.ok) {
-      await handleApiError(response);
+    try {
+      const response = await fetch('/api/py/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData,
+        credentials: 'include',
+      });
+    
+      if (!response.ok) {
+        await handleApiError(response);
+      }
+    
+      const data = await response.json();
+      
+      if (!data.access_token) {
+        throw new ApiError('Invalid response: Missing access token', 500);
+      }
+      
+      // Store token in cookie
+      setAuthToken(data.access_token);
+      
+      // Store user data
+      if (data.user_id) {
+        setUserData({
+          id: data.user_id,
+          email: data.email || '',
+          full_name: data.full_name || '',
+        });
+      }
+      
+      return data;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(`Login failed: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
-  
-    const data = await response.json();
-
-    setAuthToken(data.access_token);
-  
-    return data;
   },
   
-
   async register(email: string, password: string, fullName: string) {
     return this.post('auth/register', {
       email,
