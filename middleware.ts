@@ -29,7 +29,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Check authorization header first (for API requests)
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    if (isValidToken(token)) {
+      return NextResponse.next();
+    }
+  }
+
+  // Then check cookie
   const token = request.cookies.get('access_token')?.value;
+  
   if (path.startsWith('/api/')) {
     if (!token || !isValidToken(token)) {
       return new NextResponse(
@@ -40,8 +51,18 @@ export async function middleware(request: NextRequest) {
         }
       );
     }
-    return NextResponse.next();
+    
+    // Forward request with authorization header
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('Authorization', `Bearer ${token}`);
+    
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
+  
   if (!token || !isValidToken(token)) {
     const url = new URL('/login', request.url);
     url.searchParams.set('from', path);

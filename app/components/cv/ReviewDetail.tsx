@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/components/AuthProvider';
 import ReactMarkdown from 'react-markdown';
@@ -38,35 +38,9 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
   const [review, setReview] = useState<Review | null>(null);
   const [polling, setPolling] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push('/login');
-      } else {
-        fetchReviewData();
-      }
-    }
-  }, [reviewId, isLoading, isAuthenticated, router]);
-
-  useEffect(() => {
-    if (review?.status === 'processing' && !polling) {
-      setPolling(true);
-      const interval = setInterval(() => {
-        fetchReviewData(false);
-      }, 5000);
-
-      return () => {
-        clearInterval(interval);
-        setPolling(false);
-      };
-    }
-  }, [review, polling]);
-
-  const fetchReviewData = async (showLoading = true) => {
+  const fetchReviewData = useCallback(async (showLoading = true) => {
     try {
-      if (showLoading) {
-        setLoading(true);
-      }
+      if (showLoading) setLoading(true);
       const data = await apiClient.get(`reviews/${reviewId}`);
       setReview(data);
     } catch (err: any) {
@@ -75,7 +49,30 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [reviewId]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push('/login');
+      } else {
+        fetchReviewData();
+      }
+    }
+  }, [reviewId, isLoading, isAuthenticated, router, fetchReviewData]);
+
+  useEffect(() => {
+    if (review?.status === 'processing' && !polling) {
+      setPolling(true);
+      const interval = setInterval(() => {
+        fetchReviewData(false);
+      }, 5000);
+      return () => {
+        clearInterval(interval);
+        setPolling(false);
+      };
+    }
+  }, [review, polling, fetchReviewData]);
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -127,19 +124,16 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
             <Chip icon={getStatusIcon(review.status)} label={review.status.charAt(0).toUpperCase() + review.status.slice(1)} color={getStatusColor(review.status) as any} />
           </Grid>
         </Grid>
-
         {review.status === 'processing' && (
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary">Your CV is being analyzed. This may take a few minutes.</Typography>
             <LinearProgress sx={{ mt: 1 }} />
           </Box>
         )}
-
         {review.status === 'failed' && (
           <Alert severity="error" sx={{ mt: 2 }}>There was an error processing your CV review. Please try uploading again.</Alert>
         )}
       </Paper>
-
       {review.status === 'completed' && review.review_result && (
         <Grid container spacing={3}>
           {review.score !== null && (
@@ -154,7 +148,6 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
               </Card>
             </Grid>
           )}
-
           <Grid item xs={12} md={review.score !== null ? 8 : 12}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6">Review Feedback</Typography>

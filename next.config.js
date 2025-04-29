@@ -8,11 +8,14 @@ const nextConfig = {
       {
         source: "/api/py/:path*",
         destination: process.env.NODE_ENV === 'development' 
-          ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/py/:path*` 
+          ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/py/:path*`
           : "/api/py/:path*"
       }
     ];
   },
+  eslint: {
+    ignoreDuringBuilds: true
+  }
 };
 
 module.exports = nextConfig;

@@ -1,4 +1,3 @@
-declare module '@clerk/nextjs/server';
 declare module '@mui/material';
 declare module '@mui/icons-material';
 declare module 'body-parser';

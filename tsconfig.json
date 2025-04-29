@@ -22,7 +22,6 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@clerk/nextjs": ["./node_modules/@clerk/nextjs"],
       "@mui/material": ["./node_modules/@mui/material"]
     },
     "types": [

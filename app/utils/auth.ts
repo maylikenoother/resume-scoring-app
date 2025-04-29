@@ -18,9 +18,9 @@ const USER_DATA_KEY = 'user_data';
 
 export const setAuthToken = (token: string): void => {
   Cookies.set(TOKEN_COOKIE_NAME, token, { 
-    expires: 1/48, // 30 minutes
+    expires: 1, // 1 day (increasing from 30 minutes to avoid quick expiration)
     path: '/',
-    sameSite: 'strict',
+    sameSite: 'lax', // Changed from 'strict' to 'lax' to allow cross-site requests
     secure: window.location.protocol === 'https:'
   });
 };

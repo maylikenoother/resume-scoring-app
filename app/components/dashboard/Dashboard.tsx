@@ -344,7 +344,7 @@ export default function Dashboard() {
             ) : (
               <Box sx={{ textAlign: 'center', py: 3 }}>
                 <Typography color="text.secondary">
-                  You don't have any notifications yet.
+                  You Don&apos;t have any notifications yet.
                 </Typography>
               </Box>
             )}

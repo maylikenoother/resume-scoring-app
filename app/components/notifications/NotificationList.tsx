@@ -157,7 +157,7 @@ export default function NotificationList() {
             <NotificationsIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>No Notifications</Typography>
             <Typography variant="body2" color="text.secondary">
-              You don't have any notifications yet. They will appear here when your CV reviews are processed.
+              You Don&apos;t have any notifications yet. They will appear here when your CV reviews are processed.
             </Typography>
           </Box>
         )}

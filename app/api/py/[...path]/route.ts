@@ -43,8 +43,8 @@ async function handleApiRequest(
     const headers = new Headers();
     
     // Get auth token from cookies
-    const cookies = request.cookies;
-    const authToken = cookies.get('access_token')?.value;
+    const requestCookies = request.cookies;
+    const authToken = requestCookies.get('access_token')?.value;
     
     // Set Authorization header if token exists in cookies
     if (authToken) {
@@ -165,6 +165,12 @@ async function handleApiRequest(
       if (value) {
         nextResponse.headers.set(header, value);
       }
+    }
+    
+    // Set or forward the cookie if it exists in the response
+    const responseCookieHeader = response.headers.get('set-cookie');
+    if (responseCookieHeader) {
+      nextResponse.headers.set('set-cookie', responseCookieHeader);
     }
     
     return nextResponse;
