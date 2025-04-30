@@ -14,7 +14,8 @@ interface ReviewDetailPageProps {
 
 export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
   const router = useRouter();
-  const reviewId = parseInt(params.id);
+  // Ensure params.id is properly handled whether it's a Promise or not
+  const reviewId = parseInt(typeof params.id === 'string' ? params.id : String(params.id));
 
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);

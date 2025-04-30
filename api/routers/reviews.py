@@ -112,7 +112,7 @@ async def process_review(review_id: int):
             
             review.status = ReviewStatus.COMPLETED
             review.review_result = review_result
-            review.score = 7.5  # TODO: Implement proper scoring algorithm
+            # review.score = 7.5  # TODO: Implement proper scoring algorithm
             
             notification = Notification(
                 user_id=review.user_id,
