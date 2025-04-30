@@ -1,3 +1,4 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -5,6 +6,7 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: 'http://localhost:8000'
   },
+  trailingSlash: true,
   async rewrites() {
     return [
       {

@@ -1,4 +1,3 @@
-// app/utils/api-client.ts
 import { getAuthToken, removeAuthToken, setAuthToken, setUserData } from './auth';
 
 interface ApiErrorResponse {
@@ -31,33 +30,40 @@ const handleApiError = async (response: Response): Promise<never> => {
 
 export const apiClient = {
   async request<T = any>(method: string, endpoint: string, body?: any, isUpload: boolean = false): Promise<T> {
-    // Get token from cookie or localStorage
-    const token = getAuthToken();
+    if (!endpoint.includes('?') && !endpoint.endsWith('/')) {
+      endpoint = `${endpoint}/`;
+    }
+    
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const url = new URL(`${apiBaseUrl}/api/py/${endpoint.replace(/^\//, '')}`);
     
     const headers: HeadersInit = {};
     
-    if (!isUpload) {
-      headers['Content-Type'] = 'application/json';
-    }
-    headers['Accept'] = 'application/json';
+    const token = getAuthToken();
     
-    // CRITICAL: Attach the token as a Bearer token in Authorization header
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+      console.log('Using token for API request');
+    } else {
+      console.log('Warning: No auth token available for API request');
     }
-
+    
+    headers['Accept'] = 'application/json';
+    
+    const contentType = isUpload ? undefined : 'application/json';
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+    
     const fetchOptions: RequestInit = {
       method,
       headers,
-      credentials: 'include', // Include cookies with the request
+      body: isUpload ? body : body ? JSON.stringify(body) : undefined,
+      credentials: 'include',
     };
 
-    if (body) {
-      fetchOptions.body = isUpload ? body : JSON.stringify(body);
-    }
-
     try {
-      const response = await fetch(`/api/py/${endpoint.replace(/^\//, '')}`, fetchOptions);
+      const response = await fetch(url.toString(), fetchOptions);
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -67,7 +73,7 @@ export const apiClient = {
         await handleApiError(response);
       }
 
-      return await response.json();
+      return response.json();
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -126,10 +132,8 @@ export const apiClient = {
         throw new ApiError('Invalid response: Missing access token', 500);
       }
       
-      // Store token in localStorage and cookie
       setAuthToken(data.access_token);
-      
-      // Store user data
+
       if (data.user_id) {
         setUserData({
           id: data.user_id,
