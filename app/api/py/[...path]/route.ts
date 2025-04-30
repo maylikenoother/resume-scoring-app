@@ -1,31 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleApiRequest(request, 'GET', params);
+export async function GET(request: NextRequest, context: any) {
+  return handleApiRequest(request, 'GET', { path: context.params?.path ?? [] });
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleApiRequest(request, 'POST', params);
+export async function POST(request: NextRequest, context: any) {
+  return handleApiRequest(request, 'POST', { path: context.params?.path ?? [] });
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleApiRequest(request, 'PUT', params);
+export async function PUT(request: NextRequest, context: any) {
+  return handleApiRequest(request, 'PUT', { path: context.params?.path ?? [] });
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleApiRequest(request, 'DELETE', params);
+export async function DELETE(request: NextRequest, context: any) {
+  return handleApiRequest(request, 'DELETE', { path: context.params?.path ?? [] });
 }
 
 async function handleApiRequest(

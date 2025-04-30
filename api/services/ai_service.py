@@ -1,8 +1,9 @@
-import httpx
 import logging
-import json
-import os
+import time
+import random
+import asyncio
 from typing import Dict, Any, Optional
+import google.generativeai as genai
 
 from api.core.config import settings
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 async def generate_review(cv_content: str) -> str:
     """
-    Generate an AI review for the CV content using Hugging Face Inference API.
+    Generate an AI review for the CV content using Google Gemini API.
     
     Args:
         cv_content: The text content of the CV to review
@@ -19,13 +20,21 @@ async def generate_review(cv_content: str) -> str:
         A formatted review of the CV
     """
     try:
-        logger.info(f"Settings HUGGINGFACE_API_KEY present: {settings.HUGGINGFACE_API_KEY is not None}")
+        logger.info(f"Settings GEMINI_API_KEY present: {settings.GEMINI_API_KEY is not None}")
         
-        api_key = settings.HUGGINGFACE_API_KEY
+        api_key = settings.GEMINI_API_KEY
         
         if not api_key:
-            logger.warning("No Hugging Face API key found in settings. Using mock review data.")
+            logger.warning("No Gemini API key found in settings. Using mock review data.")
             return generate_mock_review(cv_content)
+        
+        # Configure the Gemini API
+        genai.configure(api_key=api_key)
+        
+        # Use more cost-effective model for free tier
+        model_name = "gemini-1.5-flash"  # Lower resource usage than Pro
+        logger.info(f"Using Gemini model: {model_name}")
+        model = genai.GenerativeModel(model_name)
         
         prompt = f"""
         Please review the following CV and provide professional feedback on how to improve it:
@@ -39,64 +48,43 @@ async def generate_review(cv_content: str) -> str:
         4. Experience description
         5. Education section
         6. Specific improvements
+        
+        Format your response with markdown headings and bullet points.
         """
 
-        logger.info(f"Using Hugging Face Model: {settings.HUGGINGFACE_MODEL_ID}")
+        # Generate content with retry logic
+        max_retries = 3
+        retry_count = 0
         
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": 250,
-                "temperature": 0.7,
-                "top_p": 0.95,
-                "do_sample": True
-            }
-        }
-        
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        while retry_count < max_retries:
             try:
-                logger.info("Sending request to Hugging Face Inference API...")
-                api_url = f"https://api-inference.huggingface.co/models/{settings.HUGGINGFACE_MODEL_ID}"
-                response = await client.post(
-                    api_url,
-                    headers=headers,
-                    json=payload
-                )
+                logger.info(f"Sending request to Gemini API (attempt {retry_count + 1})...")
+                response = await model.generate_content_async(prompt)
                 
-                if response.status_code == 200:
-                    logger.info("Successfully received response from Hugging Face")
-                    data = response.json()
-                    
-                    if isinstance(data, list):
-                        if isinstance(data[0], dict) and 'generated_text' in data[0]:
-                            return data[0]['generated_text']
-                        return data[0]
-                    elif isinstance(data, dict) and 'generated_text' in data:
-                        return data['generated_text']
-                    else:
-                        logger.error(f"Unexpected response format: {data}")
-                        return generate_mock_review(cv_content)
+                if response and response.text:
+                    logger.info("Successfully received response from Gemini")
+                    return response.text
                 else:
-                    logger.error(f"API error: {response.status_code} - {response.text}")
-                    error_message = f"Error from Hugging Face API: {response.status_code}"
-                    if response.text:
-                        try:
-                            error_data = response.json()
-                            if "error" in error_data:
-                                error_message = f"Hugging Face API error: {error_data['error']}"
-                        except:
-                            pass
-                    
-                    logger.error(error_message)
+                    logger.error("Empty or invalid response from Gemini API")
                     return generate_mock_review(cv_content)
-            except httpx.RequestError as e:
-                logger.exception(f"Request error: {e}")
-                return generate_mock_review(cv_content)
+                    
+            except Exception as e:
+                if "429" in str(e) or "ResourceExhausted" in str(e):
+                    retry_count += 1
+                    if retry_count >= max_retries:
+                        logger.warning(f"Rate limit exceeded after {max_retries} attempts. Using mock review.")
+                        return generate_mock_review(cv_content)
+                    
+                    # Exponential backoff with jitter
+                    wait_time = (2 ** retry_count) + (random.random() * 2)
+                    logger.info(f"Rate limit exceeded. Retrying in {wait_time:.2f} seconds (attempt {retry_count}/{max_retries})")
+                    await asyncio.sleep(wait_time)
+                else:
+                    # For other errors, don't retry
+                    raise
+        
+        return generate_mock_review(cv_content)
+            
     except Exception as e:
         logger.exception(f"Error generating CV review: {e}")
         return generate_mock_review(cv_content)

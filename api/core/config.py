@@ -19,8 +19,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256" 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 
     
-    HUGGINGFACE_API_KEY: str = ""
-    HUGGINGFACE_MODEL_ID: str = "google/flan-t5-large"
+    GEMINI_API_KEY: str = ""
     
     DEFAULT_CREDITS: int = 5
     REVIEW_CREDIT_COST: int = 1 
