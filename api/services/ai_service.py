@@ -51,7 +51,7 @@ async def generate_review(cv_content: str) -> str:
         payload = {
             "inputs": prompt,
             "parameters": {
-                "max_new_tokens": 1000,
+                "max_new_tokens": 250,
                 "temperature": 0.7,
                 "top_p": 0.95,
                 "do_sample": True
