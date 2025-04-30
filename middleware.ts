@@ -8,7 +8,12 @@ const publicPaths = [
 ];
 
 function isPublicPath(path: string): boolean {
-  return publicPaths.some(publicPath => path === publicPath || path.startsWith(`${publicPath}/`));
+  return publicPaths.some(publicPath => 
+    path === publicPath || 
+    path.startsWith(`${publicPath}/`) ||
+    path.startsWith('/_next/') ||
+    path.startsWith('/favicon.ico')
+  );
 }
 
 function isValidToken(token: string): boolean {
@@ -74,6 +79,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

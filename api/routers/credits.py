@@ -3,7 +3,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-
+from api.core.config import settings
 from api.core.auth import get_current_active_user
 from api.core.rbac import all_users
 from api.core.database import get_db

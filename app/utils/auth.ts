@@ -1,4 +1,3 @@
-// api/utils/auth.ts
 import { jwtDecode } from "jwt-decode";
 import Cookies from 'js-cookie';
 
@@ -18,19 +17,28 @@ const USER_DATA_KEY = 'user_data';
 
 export const setAuthToken = (token: string): void => {
   Cookies.set(TOKEN_COOKIE_NAME, token, { 
-    expires: 1, // 1 day (increasing from 30 minutes to avoid quick expiration)
+    expires: 7, // 7 days
     path: '/',
-    sameSite: 'lax', // Changed from 'strict' to 'lax' to allow cross-site requests
+    sameSite: 'lax',
     secure: window.location.protocol === 'https:'
   });
+  
+  // Also store in localStorage as a backup
+  localStorage.setItem(TOKEN_COOKIE_NAME, token);
 };
 
 export const getAuthToken = (): string | undefined => {
-  return Cookies.get(TOKEN_COOKIE_NAME);
+  // Try cookie first
+  const cookieToken = Cookies.get(TOKEN_COOKIE_NAME);
+  if (cookieToken) return cookieToken;
+  
+  // Fall back to localStorage
+  return localStorage.getItem(TOKEN_COOKIE_NAME) || undefined;
 };
 
 export const removeAuthToken = (): void => {
   Cookies.remove(TOKEN_COOKIE_NAME, { path: '/' });
+  localStorage.removeItem(TOKEN_COOKIE_NAME);
   localStorage.removeItem(USER_DATA_KEY);
 };
 

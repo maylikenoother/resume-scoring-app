@@ -14,12 +14,12 @@ class Settings(BaseSettings):
     def get_database_url(self) -> str:
         return self.POSTGRES_URL if self.POSTGRES_URL else self.DATABASE_URL
 
-    SECRET_KEY: str
+    SECRET_KEY: str = secrets.token_hex(32)
 
     ALGORITHM: str = "HS256" 
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 # 1 day
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     
-    HUGGINGFACE_API_KEY: str
+    HUGGINGFACE_API_KEY: str = ""
     HUGGINGFACE_MODEL_ID: str = "google/flan-t5-large"
     
     DEFAULT_CREDITS: int = 5
@@ -32,14 +32,14 @@ class Settings(BaseSettings):
     
     BACKGROUND_WORKERS: int = 2
 
-    # BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
-    CLOUDINARY_CLOUD_NAME: str
-    CLOUDINARY_API_KEY: str
-    CLOUDINARY_API_SECRET: str
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
     
-    NEXT_PUBLIC_API_URL: str
-    API_BASE_URL: str
+    NEXT_PUBLIC_API_URL: str = "http://localhost:8000"
+    API_BASE_URL: str = "http://localhost:8000"
     
     ADMIN_USERS: List[str] = [] 
     

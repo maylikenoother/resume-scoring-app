@@ -46,7 +46,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=30)
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
 
@@ -112,13 +112,11 @@ async def register(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        # Check if user already exists
         result = await db.execute(select(User).where(User.email == user_in.email))
         existing_user = result.scalars().first()
         if existing_user:
             raise HTTPException(status_code=400, detail="Email already registered")
 
-        # Create new user
         new_user = User(
             email=user_in.email,
             hashed_password=get_password_hash(user_in.password),
@@ -180,7 +178,7 @@ async def login(
                 detail="User account is not active"
             )
 
-        access_token_expires = timedelta(minutes=30)
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": str(user.id)},
             expires_delta=access_token_expires

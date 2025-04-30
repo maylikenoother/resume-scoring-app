@@ -1,20 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
+  poweredByHeader: false,
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    NEXT_PUBLIC_API_URL: 'http://localhost:8000'
   },
   async rewrites() {
     return [
       {
         source: "/api/py/:path*",
-        destination: process.env.NODE_ENV === 'development' 
-          ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/py/:path*`
-          : "/api/py/:path*"
+        destination: "http://localhost:8000/api/py/:path*"
       }
     ];
-  },
-  eslint: {
-    ignoreDuringBuilds: true
   }
 };
 

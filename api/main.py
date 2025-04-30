@@ -41,9 +41,8 @@ async def lifespan(app: FastAPI):
     logger.info("Starting application")
     await apply_migrations()
 
-    logger.info(f"Hugging Face API Key set: {bool(settings.HUGGINGFACE_API_KEY)}")
-    logger.info(f"Using AI model: {settings.HUGGINGFACE_MODEL_ID}")
-    logger.info(f"JWT Authentication enabled: {bool(settings.SECRET_KEY)}")
+    logger.info(f"JWT Authentication enabled with algorithm: {settings.ALGORITHM}")
+    logger.info(f"Token expiration: {settings.ACCESS_TOKEN_EXPIRE_MINUTES} minutes")
     
     db_url_parts = settings.get_database_url.split('@')
     if len(db_url_parts) > 1:
@@ -66,21 +65,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-allowed_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000"
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
-    expose_headers=["Authorization", "Set-Cookie"],
-    max_age=86400,
+    expose_headers=["Authorization"],
 )
 
 app.include_router(reviews.router, prefix=settings.API_V1_STR)

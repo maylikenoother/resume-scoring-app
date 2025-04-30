@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-
+from api.core.config import settings
 from api.core.auth import get_current_active_user, validate_resource_ownership
 from api.core.database import get_db, AsyncSessionLocal
 from api.models.models import User, Review, CreditBalance, Notification, CreditTransaction, ReviewStatus

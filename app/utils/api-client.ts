@@ -1,6 +1,3 @@
-// api/utils/api-client.ts
-'use client';
-
 import { getAuthToken, removeAuthToken, setAuthToken, setUserData } from './auth';
 
 interface ApiErrorResponse {
@@ -51,7 +48,7 @@ export const apiClient = {
     const fetchOptions: RequestInit = {
       method,
       headers,
-      credentials: 'include', // Important: include cookies with the request
+      credentials: 'include', // Include cookies with the request
     };
 
     if (body) {

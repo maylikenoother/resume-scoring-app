@@ -1,4 +1,3 @@
-// app/api/py/[...path]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -39,26 +38,29 @@ async function handleApiRequest(
   const url = `${apiBaseUrl}/api/py/${path}${request.nextUrl.search}`;
 
   try {
-    // Forward headers from the original request
     const headers = new Headers();
     
-    // Get auth token from cookies
-    const requestCookies = request.cookies;
-    const authToken = requestCookies.get('access_token')?.value;
-    
-    // Set Authorization header if token exists in cookies
-    if (authToken) {
-      headers.set('Authorization', `Bearer ${authToken}`);
-    }
-    // Also check for Authorization header in the request
-    else {
-      const authHeader = request.headers.get('authorization');
-      if (authHeader) {
-        headers.set('Authorization', authHeader);
-      }
+    console.log('Cookie debugging:');
+    for (const cookie of request.cookies.getAll()) {
+      const { name: key, value } = cookie;
+      console.log(`Cookie ${key}: ${value ? 'exists' : 'not found'}`);
     }
     
-    // Set content type and accept headers
+    const cookieToken = request.cookies.get('access_token')?.value;
+    
+    const authHeader = request.headers.get('authorization');
+    
+    const customToken = request.headers.get('x-auth-token');
+    
+    let token = cookieToken || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null) || customToken;
+    
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+      console.log('Using token from: ' + (cookieToken ? 'cookie' : (authHeader ? 'auth header' : 'custom header')));
+    } else {
+      console.log('No auth token found in request');
+    }
+    
     headers.set('Accept', 'application/json');
     
     const contentType = request.headers.get('content-type');
@@ -66,7 +68,6 @@ async function handleApiRequest(
       headers.set('Content-Type', contentType);
     }
     
-    // For non-GET requests, get the body
     let requestBody: BodyInit | undefined = undefined;
     
     if (method !== 'GET') {
@@ -112,7 +113,6 @@ async function handleApiRequest(
 
     const response = await fetch(url, fetchOptions);
     
-    // Get response data
     let responseData;
     let responseText;
     
@@ -147,13 +147,28 @@ async function handleApiRequest(
       }
     }
     
-    // Create response with appropriate headers
+    if (responseData && responseData.access_token) {
+      const nextResponse = NextResponse.json(responseData, { 
+        status: response.status,
+        statusText: response.statusText 
+      });
+      
+      nextResponse.cookies.set('access_token', responseData.access_token, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+      });
+      
+      return nextResponse;
+    }
+    
     const nextResponse = NextResponse.json(responseData, { 
       status: response.status,
       statusText: response.statusText 
     });
     
-    // Forward important headers from the backend response
     const headersToCopy = [
       'cache-control',
       'content-disposition',
@@ -167,7 +182,6 @@ async function handleApiRequest(
       }
     }
     
-    // Set or forward the cookie if it exists in the response
     const responseCookieHeader = response.headers.get('set-cookie');
     if (responseCookieHeader) {
       nextResponse.headers.set('set-cookie', responseCookieHeader);
