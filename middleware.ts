@@ -1,4 +1,3 @@
-// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtDecode } from "jwt-decode";
@@ -6,6 +5,12 @@ import { jwtDecode } from "jwt-decode";
 const publicPaths = [
   '/', '/login', '/register', '/docs', '/debug',
   '/api/py/health', '/api/py/auth/login', '/api/py/auth/register'
+];
+
+const publicApiPaths = [
+  '/api/py/health',
+  '/api/py/auth/login',
+  '/api/py/auth/register'
 ];
 
 function isPublicPath(path: string): boolean {
@@ -24,6 +29,7 @@ function isValidToken(token: string): boolean {
     
     return decoded.exp > currentTime;
   } catch (error) {
+    console.error("Token validation error:", error);
     return false;
   }
 }
@@ -35,19 +41,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check authorization header first (for API requests)
-  const authHeader = request.headers.get('authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    if (isValidToken(token)) {
+  const token = request.cookies.get('access_token')?.value;
+
+  if (path.startsWith('/api/py/')) {
+
+    if (publicApiPaths.some(apiPath => path.startsWith(apiPath))) {
       return NextResponse.next();
     }
-  }
 
-  // Then check cookie
-  const token = request.cookies.get('access_token')?.value;
-  
-  if (path.startsWith('/api/')) {
     if (!token || !isValidToken(token)) {
       return new NextResponse(
         JSON.stringify({ error: 'Authentication required' }),
@@ -58,7 +59,6 @@ export async function middleware(request: NextRequest) {
       );
     }
     
-    // Forward request with authorization header
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('Authorization', `Bearer ${token}`);
     

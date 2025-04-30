@@ -9,6 +9,7 @@ from sqlalchemy import select
 from pydantic import BaseModel
 import logging
 import traceback
+from api.core.config import settings
 
 from api.core.config import settings
 from api.core.database import get_db

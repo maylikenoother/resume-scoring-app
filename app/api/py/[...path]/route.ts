@@ -1,24 +1,32 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest, context: any) {
-  return handleApiRequest(request, 'GET', context.params);
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { path: string[] } }
+) {
+  return handleApiRequest(request, 'GET', params);
 }
 
-
-export async function POST(request: NextRequest, context: any) {
-  return handleApiRequest(request, 'POST', context.params);
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { path: string[] } }
+) {
+  return handleApiRequest(request, 'POST', params);
 }
 
-
-export async function PUT(request: NextRequest, context: any) {
-  return handleApiRequest(request, 'PUT', context.params);
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { path: string[] } }
+) {
+  return handleApiRequest(request, 'PUT', params);
 }
 
-export async function DELETE(request: NextRequest, context: any) {
-  return handleApiRequest(request, 'DELETE', context.params);
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { path: string[] } }
+) {
+  return handleApiRequest(request, 'DELETE', params);
 }
-
 
 async function handleApiRequest(
   request: NextRequest, 
@@ -31,22 +39,13 @@ async function handleApiRequest(
 
   try {
     const headers = new Headers();
-
-    console.log('Cookie debugging:');
-    for (const cookie of request.cookies.getAll()) {
-      const { name: key, value } = cookie;
-      console.log(`Cookie ${key}: ${value ? 'exists' : 'not found'}`);
-    }
     
+    // Simplified token handling - just use the cookie
     const cookieToken = request.cookies.get('access_token')?.value;
-    const authHeader = request.headers.get('authorization');
-    const customToken = request.headers.get('x-auth-token');
     
-    let token = cookieToken || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null) || customToken;
-    
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-      console.log('Using token from: ' + (cookieToken ? 'cookie' : (authHeader ? 'auth header' : 'custom header')));
+    if (cookieToken) {
+      headers.set('Authorization', `Bearer ${cookieToken}`);
+      console.log('Using token from cookie');
     } else {
       console.log('No auth token found in request');
     }
@@ -137,16 +136,16 @@ async function handleApiRequest(
       }
     }
     
+    // If we get a new token from a login, set it in the cookie
     if (responseData && responseData.access_token) {
       const nextResponse = NextResponse.json(responseData, { 
         status: response.status,
         statusText: response.statusText 
       });
       
-      // Set the cookie with the token from the response
       nextResponse.cookies.set('access_token', responseData.access_token, {
         path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 24 * 7, // 7 days - match with backend
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
@@ -173,7 +172,6 @@ async function handleApiRequest(
       }
     }
     
-    // Copy any cookies from the FastAPI response
     const responseCookieHeader = response.headers.get('set-cookie');
     if (responseCookieHeader) {
       nextResponse.headers.set('set-cookie', responseCookieHeader);

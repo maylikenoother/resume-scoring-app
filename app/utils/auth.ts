@@ -1,9 +1,5 @@
-// app/utils/auth.ts
+import { jwtDecode } from "jwt-decode";
 import Cookies from 'js-cookie';
-
-// Set a consistent token name
-const TOKEN_NAME = 'access_token';
-const USER_DATA_KEY = 'cv_review_user_data';
 
 interface UserData {
   id: number;
@@ -11,45 +7,32 @@ interface UserData {
   full_name: string;
 }
 
+interface JwtPayload {
+  sub: string;
+  exp: number;
+}
+
+const TOKEN_COOKIE_NAME = 'access_token';
+const USER_DATA_KEY = 'user_data';
+
 export const setAuthToken = (token: string): void => {
-  // Always set both cookie and localStorage
-  localStorage.setItem(TOKEN_NAME, token);
-  
-  // Use a long expiration and lax security to ensure token persistence
-  Cookies.set(TOKEN_NAME, token, {
-    expires: 30, // 30 days
+  // Use only cookies for token storage - consistent approach
+  Cookies.set(TOKEN_COOKIE_NAME, token, { 
+    expires: 7, // 7 days - match with backend
     path: '/',
     sameSite: 'lax',
     secure: window.location.protocol === 'https:'
   });
-  
-  console.log('Token set in both localStorage and cookie');
 };
 
-export const getAuthToken = (): string | null => {
-  // Try localStorage first (more reliable across pages)
-  const lsToken = localStorage.getItem(TOKEN_NAME);
-  
-  // Then try cookie as fallback
-  const cookieToken = Cookies.get(TOKEN_NAME);
-  
-  const token = lsToken || cookieToken || null;
-  
-  // Debug token
-  if (token) {
-    console.log('Token found, first 15 chars:', token.substring(0, 15) + '...');
-  } else {
-    console.log('No token found');
-  }
-  
-  return token;
+export const getAuthToken = (): string | undefined => {
+  // Only use cookies for token retrieval
+  return Cookies.get(TOKEN_COOKIE_NAME);
 };
 
 export const removeAuthToken = (): void => {
-  localStorage.removeItem(TOKEN_NAME);
-  Cookies.remove(TOKEN_NAME, { path: '/' });
+  Cookies.remove(TOKEN_COOKIE_NAME, { path: '/' });
   localStorage.removeItem(USER_DATA_KEY);
-  console.log('Token removed from both localStorage and cookie');
 };
 
 export const setUserData = (userData: UserData): void => {
@@ -68,7 +51,20 @@ export const getUserData = (): UserData | null => {
   }
 };
 
-export const isAuthenticated = (): boolean => {
+export const isTokenValid = (): boolean => {
   const token = getAuthToken();
-  return !!token;
+  if (!token) return false;
+  
+  try {
+    const decoded = jwtDecode<JwtPayload>(token);
+    const currentTime = Math.floor(Date.now() / 1000);
+    return decoded.exp > currentTime;
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return false;
+  }
+};
+
+export const isAuthenticated = (): boolean => {
+  return isTokenValid();
 };

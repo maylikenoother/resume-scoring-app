@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_hex(32)
 
     ALGORITHM: str = "HS256" 
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 
     
     HUGGINGFACE_API_KEY: str = ""
     HUGGINGFACE_MODEL_ID: str = "google/flan-t5-large"
