@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { isAuthenticated, getUserData, removeAuthToken } from '@/app/utils/auth';
+import { isAuthenticated, getUserData, removeAuthToken, getAuthToken } from '@/app/utils/auth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -46,6 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: userData.email,
           fullName: userData.full_name,
         } : null,
+      });
+      
+      // For debugging
+      console.log("Auth check:", {
+        authenticated,
+        token: getAuthToken()?.substring(0, 15) + "...",
+        userData
       });
     };
 

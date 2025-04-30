@@ -1,29 +1,41 @@
-import { auth } from "@clerk/nextjs/server";
+"use client";
 
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-  const { getToken } = await auth();
-  const token = await getToken({template: 'cv-review-app'});
-  
-  if (!token) {
-    throw new Error('No authentication token found');
+  const headers = new Headers(options.headers || {});
+
+  let token: string | undefined;
+
+  if (typeof window !== "undefined") {
+    const match = document.cookie.match(/(?:^|; )access_token=([^;]+)/);
+    token = match?.[1];
   }
 
-  const headers = new Headers(options.headers || {});
-  headers.set('Authorization', `Bearer ${token}`);
-  
+  if (!token && headers.has("x-auth-token")) {
+    token = headers.get("x-auth-token") || undefined;
+  }
+
+  if (!token) {
+    console.warn("No JWT token found in cookie or header.");
+    throw new Error("No authentication token found");
+  }
+
+  headers.set("Authorization", `Bearer ${token}`);
+
   try {
-    return await fetch(url, {
+    const response = await fetch(url, {
       ...options,
       headers,
-      cache: 'no-store',
+      cache: "no-store",
     });
+
+    return response;
   } catch (error) {
-    console.error(`Auth fetch error for ${url}:`, error);
+    console.error(`fetchWithAuth error: ${url}`, error);
     throw error;
   }
 };
 
-export const isAuthenticated = async () => {
-  const { userId } = await auth();
-  return !!userId;
+export const isAuthenticated = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return document.cookie.includes("access_token=");
 };

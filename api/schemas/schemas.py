@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional, Union
 from enum import Enum
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field
 
 class UserRole(str, Enum):
     ADMIN = "admin"
@@ -22,23 +22,26 @@ class ReviewStatus(str, Enum):
 class UserBase(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
-    
+
 class UserCreate(UserBase):
-    clerk_user_id: str
-    
+    pass 
+
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     is_active: Optional[bool] = None
     role: Optional[UserRole] = None
 
+    class Config:
+        from_attributes = True
+
 class UserInDBBase(UserBase):
     id: int
-    clerk_user_id: str
     is_active: bool
     role: UserRole
     created_at: datetime
-    
+    updated_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 
@@ -61,7 +64,7 @@ class CreditBalance(CreditBalanceBase):
     user_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -74,7 +77,7 @@ class CreditTransaction(CreditTransactionBase):
     id: int
     credit_balance_id: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -102,7 +105,7 @@ class Review(ReviewBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     score: Optional[float] = None
-    
+
     class Config:
         from_attributes = True
 
@@ -122,7 +125,7 @@ class Notification(NotificationBase):
     review_id: Optional[int] = None
     is_read: bool
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -133,11 +136,11 @@ class ApiResponse(BaseModel):
     success: bool
     message: str
     data: Optional[Union[dict, list]] = None
-    
+
     @classmethod
     def success_response(cls, message: str, data: Optional[Union[dict, list]] = None) -> "ApiResponse":
         return cls(success=True, message=message, data=data)
-    
+
     @classmethod
     def error_response(cls, message: str) -> "ApiResponse":
         return cls(success=False, message=message)

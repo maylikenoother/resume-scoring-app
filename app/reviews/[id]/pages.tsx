@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from "@clerk/nextjs";
 import { Box, Container, Alert } from '@mui/material';
 import ReviewDetail from '@/app/components/cv/ReviewDetail';
 import Navbar from '@/app/components/layout/Navbar';
@@ -15,18 +14,22 @@ interface ReviewDetailPageProps {
 
 export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
   const reviewId = parseInt(params.id);
 
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
+    const tokenExists = document.cookie.includes('access_token=');
+    setIsAuthenticated(tokenExists);
+    setAuthChecked(true);
+
+    if (!tokenExists) {
       router.push('/login');
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [router]);
 
-  if (!isLoaded) {
-    return null;
-  }
+  if (!authChecked) return null;
 
   if (isNaN(reviewId)) {
     return (

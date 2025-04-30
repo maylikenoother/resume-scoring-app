@@ -1,3 +1,4 @@
+// app/utils/api-client.ts
 import { getAuthToken, removeAuthToken, setAuthToken, setUserData } from './auth';
 
 interface ApiErrorResponse {
@@ -30,7 +31,7 @@ const handleApiError = async (response: Response): Promise<never> => {
 
 export const apiClient = {
   async request<T = any>(method: string, endpoint: string, body?: any, isUpload: boolean = false): Promise<T> {
-    // Get token from cookie
+    // Get token from cookie or localStorage
     const token = getAuthToken();
     
     const headers: HeadersInit = {};
@@ -66,7 +67,7 @@ export const apiClient = {
         await handleApiError(response);
       }
 
-      return response.json();
+      return await response.json();
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
@@ -125,7 +126,7 @@ export const apiClient = {
         throw new ApiError('Invalid response: Missing access token', 500);
       }
       
-      // Store token in cookie
+      // Store token in localStorage and cookie
       setAuthToken(data.access_token);
       
       // Store user data

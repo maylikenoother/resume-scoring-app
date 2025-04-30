@@ -1,3 +1,4 @@
+// app/reviews/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -11,6 +12,7 @@ import {
   CloudUpload as CloudUploadIcon, AccessTime as AccessTimeIcon, CheckCircle as CheckCircleIcon, Error as ErrorIcon 
 } from '@mui/icons-material';
 import { apiClient } from '@/app/utils/api-client';
+import { getAuthToken } from '@/app/utils/auth';
 
 interface Review {
   id: number;
@@ -40,10 +42,29 @@ export default function ReviewsPage() {
     try {
       setLoading(true);
       setError('');
-      const data = await apiClient.get('reviews');
+      
+      // Debug: Check if token exists before making the request
+      const token = getAuthToken();
+      if (!token) {
+        console.error("No auth token found before fetching reviews");
+        router.push('/login');
+        return;
+      }
+      
+      // Add a query parameter to prevent caching issues
+      const timestamp = new Date().getTime();
+      const data = await apiClient.get(`reviews?_t=${timestamp}`);
       setReviews(data.reviews || []);
     } catch (err: any) {
       console.error('Error fetching reviews:', err);
+      
+      // Check if the error is unauthorized (401)
+      if (err.status === 401) {
+        console.log("Unauthorized error when fetching reviews. Redirecting to login.");
+        router.push('/login');
+        return;
+      }
+      
       setError(err.message || 'Failed to load reviews');
     } finally {
       setLoading(false);
@@ -75,6 +96,24 @@ export default function ReviewsPage() {
       default: return 'default';
     }
   };
+  
+  const handleUploadClick = () => {
+    // Check authentication again before navigation
+    if (isAuthenticated) {
+      router.push('/upload');
+    } else {
+      router.push('/login');
+    }
+  };
+  
+  const handleReviewClick = (reviewId: number) => {
+    // Check authentication again before navigation
+    if (isAuthenticated) {
+      router.push(`/reviews/${reviewId}`);
+    } else {
+      router.push('/login');
+    }
+  };
 
   if (isLoading || loading) {
     return (
@@ -99,7 +138,7 @@ export default function ReviewsPage() {
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5">My CV Reviews</Typography>
-          <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => router.push('/upload')}>
+          <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={handleUploadClick}>
             Upload New CV
           </Button>
         </Box>
@@ -109,7 +148,7 @@ export default function ReviewsPage() {
             <List>
               {reviews.map((review, index) => (
                 <React.Fragment key={review.id}>
-                  <ListItem button onClick={() => router.push(`/reviews/${review.id}`)}>
+                  <ListItem button onClick={() => handleReviewClick(review.id)}>
                     <ListItemIcon>{getStatusIcon(review.status)}</ListItemIcon>
                     <ListItemText primary={review.filename} secondary={`Submitted on ${formatDate(review.created_at)}`} />
                     <Chip label={review.status.charAt(0).toUpperCase() + review.status.slice(1)} color={getStatusColor(review.status) as any} size="small" />
@@ -126,7 +165,7 @@ export default function ReviewsPage() {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Upload your first CV to get professional AI-powered feedback.
               </Typography>
-              <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => router.push('/upload')}>
+              <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={handleUploadClick}>
                 Upload CV
               </Button>
             </Box>
