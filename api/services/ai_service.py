@@ -2,23 +2,82 @@ import logging
 import time
 import random
 import asyncio
-from typing import Dict, Any, Optional
+import re
+from typing import Dict, Any, Optional, Tuple
 import google.generativeai as genai
 
 from api.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-async def generate_review(cv_content: str) -> str:
+def score_cv(cv_content: str) -> float:
     """
-    Generate an AI review for the CV content using Google Gemini API.
+    Simple CV scoring algorithm that evaluates based on various content factors.
+    
+    Args:
+        cv_content: The text content of the CV to score
+        
+    Returns:
+        A score between 0 and 10
+    """
+    score = 5.0
+    cv_lower = cv_content.lower()
+    
+    word_count = len(cv_content.split())
+    if word_count < 100:
+        score -= 1.0 
+    elif 300 <= word_count <= 700:
+        score += 1.0
+    elif word_count > 1000:
+        score -= 0.5
+    
+    if re.search(r'education|degree|university|college', cv_lower):
+        score += 0.5
+    if re.search(r'experience|work|employment|job', cv_lower):
+        score += 0.5
+    if re.search(r'skills|abilities|proficiency|competencies', cv_lower):
+        score += 0.5
+    if re.search(r'projects|portfolio|achievements', cv_lower):
+        score += 0.5
+
+    if re.search(r'email|phone|contact|linkedin|github', cv_lower):
+        score += 0.5
+    
+    achievement_count = len(re.findall(r'increased|decreased|improved|achieved|won|created|developed|led|managed|reduced', cv_lower))
+    if achievement_count >= 5:
+        score += 1.0
+    elif achievement_count >= 3:
+        score += 0.5
+    metrics_count = len(re.findall(r'\d+%|\$\d+|\d+ years|\d+ months|\d+ people|\d+ team', cv_lower))
+    if metrics_count >= 3:
+        score += 1.0
+    elif metrics_count >= 1:
+        score += 0.5
+    
+    action_verbs = ['implemented', 'developed', 'created', 'designed', 'managed', 'led', 'coordinated', 'achieved', 'improved']
+    action_verb_count = sum(1 for verb in action_verbs if f" {verb} " in cv_lower or f"\n{verb} " in cv_lower)
+    if action_verb_count >= 5:
+        score += 1.0
+    elif action_verb_count >= 3:
+        score += 0.5
+    
+    score = max(1.0, min(score, 10.0))
+    
+    return round(score, 1)
+
+async def generate_review(cv_content: str) -> Tuple[str, float]:
+    """
+    Generate an AI review for the CV content using Google Gemini API,
+    and score the CV using a simple algorithm.
     
     Args:
         cv_content: The text content of the CV to review
         
     Returns:
-        A formatted review of the CV
+        A tuple containing the formatted review of the CV and a score
     """
+    score = score_cv(cv_content)
+    
     try:
         logger.info(f"Settings GEMINI_API_KEY present: {settings.GEMINI_API_KEY is not None}")
         
@@ -26,13 +85,11 @@ async def generate_review(cv_content: str) -> str:
         
         if not api_key:
             logger.warning("No Gemini API key found in settings. Using mock review data.")
-            return generate_mock_review(cv_content)
+            return generate_mock_review(cv_content), score
         
-        # Configure the Gemini API
         genai.configure(api_key=api_key)
-        
-        # Use more cost-effective model for free tier
-        model_name = "gemini-1.5-flash"  # Lower resource usage than Pro
+
+        model_name = "gemini-1.5-flash" 
         logger.info(f"Using Gemini model: {model_name}")
         model = genai.GenerativeModel(model_name)
         
@@ -52,7 +109,6 @@ async def generate_review(cv_content: str) -> str:
         Format your response with markdown headings and bullet points.
         """
 
-        # Generate content with retry logic
         max_retries = 3
         retry_count = 0
         
@@ -63,31 +119,29 @@ async def generate_review(cv_content: str) -> str:
                 
                 if response and response.text:
                     logger.info("Successfully received response from Gemini")
-                    return response.text
+                    return response.text, score
                 else:
                     logger.error("Empty or invalid response from Gemini API")
-                    return generate_mock_review(cv_content)
+                    return generate_mock_review(cv_content), score
                     
             except Exception as e:
                 if "429" in str(e) or "ResourceExhausted" in str(e):
                     retry_count += 1
                     if retry_count >= max_retries:
                         logger.warning(f"Rate limit exceeded after {max_retries} attempts. Using mock review.")
-                        return generate_mock_review(cv_content)
+                        return generate_mock_review(cv_content), score
                     
-                    # Exponential backoff with jitter
                     wait_time = (2 ** retry_count) + (random.random() * 2)
                     logger.info(f"Rate limit exceeded. Retrying in {wait_time:.2f} seconds (attempt {retry_count}/{max_retries})")
                     await asyncio.sleep(wait_time)
                 else:
-                    # For other errors, don't retry
                     raise
         
-        return generate_mock_review(cv_content)
+        return generate_mock_review(cv_content), score
             
     except Exception as e:
         logger.exception(f"Error generating CV review: {e}")
-        return generate_mock_review(cv_content)
+        return generate_mock_review(cv_content), score
 
 def generate_mock_review(cv_content: str) -> str:
     """

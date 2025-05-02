@@ -14,23 +14,30 @@ interface ReviewDetailPageProps {
 
 export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
   const router = useRouter();
-  // Ensure params.id is properly handled whether it's a Promise or not
-  const reviewId = parseInt(typeof params.id === 'string' ? params.id : String(params.id));
+  // Access the ID safely
+  const id = params?.id || '';
+  const reviewId = parseInt(id);
 
-  const [authChecked, setAuthChecked] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authState, setAuthState] = useState({
+    checked: false,
+    isAuthenticated: false
+  });
 
   useEffect(() => {
+    // This effect should only run once on mount
     const tokenExists = document.cookie.includes('access_token=');
-    setIsAuthenticated(tokenExists);
-    setAuthChecked(true);
+    
+    setAuthState({
+      checked: true,
+      isAuthenticated: tokenExists
+    });
 
     if (!tokenExists) {
       router.push('/login');
     }
-  }, [router]);
+  }, [router]); // Only depends on router
 
-  if (!authChecked) return null;
+  if (!authState.checked) return null;
 
   if (isNaN(reviewId)) {
     return (
