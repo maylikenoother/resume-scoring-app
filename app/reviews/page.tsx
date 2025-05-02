@@ -1,15 +1,14 @@
-// app/reviews/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/components/AuthProvider';
 import { 
-  Box, Container, Typography, Paper, List, ListItem, ListItemText, ListItemIcon, Divider, Chip, Button, CircularProgress, Alert 
+  Box, Container, Typography, Paper, List, ListItem, ListItemText, ListItemIcon, Divider, Chip, Button, CircularProgress, Alert, IconButton, Tooltip
 } from '@mui/material';
 import Navbar from '@/app/components/layout/Navbar';
 import { 
-  CloudUpload as CloudUploadIcon, AccessTime as AccessTimeIcon, CheckCircle as CheckCircleIcon, Error as ErrorIcon 
+  CloudUpload as CloudUploadIcon, AccessTime as AccessTimeIcon, CheckCircle as CheckCircleIcon, Error as ErrorIcon, Refresh as RefreshIcon 
 } from '@mui/icons-material';
 import { apiClient } from '@/app/utils/api-client';
 import { getAuthToken } from '@/app/utils/auth';
@@ -25,22 +24,18 @@ export default function ReviewsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push('/login');
-      } else {
-        fetchReviews();
-      }
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async (isRefreshing = false) => {
     try {
-      setLoading(true);
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError('');
       
       // Debug: Check if token exists before making the request
@@ -68,8 +63,39 @@ export default function ReviewsPage() {
       setError(err.message || 'Failed to load reviews');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push('/login');
+      } else {
+        fetchReviews();
+      }
+    }
+  }, [isLoading, isAuthenticated, router, fetchReviews]);
+  
+  // Set up auto-refresh for processing reviews
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    
+    // If any review is processing, set up auto-refresh
+    const hasProcessingReviews = reviews.some(review => review.status === 'processing');
+    
+    if (hasProcessingReviews && autoRefresh) {
+      intervalId = setInterval(() => {
+        fetchReviews(true);
+      }, 5000); // Refresh every 5 seconds
+    }
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [reviews, autoRefresh, fetchReviews]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -114,6 +140,10 @@ export default function ReviewsPage() {
       router.push('/login');
     }
   };
+  
+  const handleRefresh = () => {
+    fetchReviews(true);
+  };
 
   if (isLoading || loading) {
     return (
@@ -138,9 +168,21 @@ export default function ReviewsPage() {
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5">My CV Reviews</Typography>
-          <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={handleUploadClick}>
-            Upload New CV
-          </Button>
+          <Box>
+            <Tooltip title="Refresh">
+              <IconButton 
+                size="small" 
+                onClick={handleRefresh} 
+                disabled={refreshing}
+                sx={{ mr: 1 }}
+              >
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+            <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={handleUploadClick}>
+              Upload New CV
+            </Button>
+          </Box>
         </Box>
 
         <Paper>

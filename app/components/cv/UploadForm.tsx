@@ -100,6 +100,7 @@ export default function UploadForm({ credits }: UploadFormProps) {
 
       const data = await response.json();
       
+      // Navigate to the review detail page
       router.push(`/reviews/${data.id}`);
     } catch (err: any) {
       setError(err.message || 'Failed to upload CV. Please try again.');

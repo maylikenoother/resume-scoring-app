@@ -36,11 +36,10 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [review, setReview] = useState<Review | null>(null);
-  const [polling, setPolling] = useState(false);
 
-  const fetchReviewData = useCallback(async (showLoading = true) => {
+  const fetchReviewData = useCallback(async () => {
     try {
-      if (showLoading) setLoading(true);
+      setLoading(true);
       const data = await apiClient.get(`reviews/${reviewId}`);
       setReview(data);
     } catch (err: any) {
@@ -61,18 +60,22 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
     }
   }, [reviewId, isLoading, isAuthenticated, router, fetchReviewData]);
 
+  // Add polling for processing reviews
   useEffect(() => {
-    if (review?.status === 'processing' && !polling) {
-      setPolling(true);
-      const interval = setInterval(() => {
-        fetchReviewData(false);
-      }, 5000);
-      return () => {
-        clearInterval(interval);
-        setPolling(false);
-      };
+    let intervalId: NodeJS.Timeout | undefined;
+    
+    if (review?.status === 'processing') {
+      intervalId = setInterval(() => {
+        fetchReviewData();
+      }, 5000); // Poll every 5 seconds
     }
-  }, [review, polling, fetchReviewData]);
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [review, fetchReviewData]);
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -126,7 +129,7 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
         </Grid>
         {review.status === 'processing' && (
           <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary">Your CV is being analyzed. This may take a few minutes.</Typography>
+            <Typography variant="body2" color="text.secondary">Your CV is being analyzed. This may take a few minutes. The page will automatically update when processing is complete.</Typography>
             <LinearProgress sx={{ mt: 1 }} />
           </Box>
         )}

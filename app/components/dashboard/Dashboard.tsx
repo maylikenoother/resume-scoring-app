@@ -1,6 +1,6 @@
 'use client';
 import { apiClient } from '@/app/utils/api-client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/components/AuthProvider';
 import {
@@ -18,6 +18,8 @@ import {
   Divider,
   CircularProgress,
   Alert,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   CloudUpload as CloudUploadIcon,
@@ -26,6 +28,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Notifications as NotificationsIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 
 interface Review {
@@ -50,6 +53,7 @@ export default function Dashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
   
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [userData, setUserData] = useState<{
     credits: number;
@@ -60,20 +64,17 @@ export default function Dashboard() {
     reviews: [],
     notifications: [],
   });
+  
+  // Auto-refresh timer for processing reviews
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push('/login');
-      } else {
-        fetchDashboardData();
-      }
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async (isRefreshing = false) => {
     try {
-      setLoading(true);
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError('');
       
       let credits = 0;
@@ -110,8 +111,40 @@ export default function Dashboard() {
       console.error('Dashboard error:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  // Set up initial data loading
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push('/login');
+      } else {
+        fetchDashboardData();
+      }
+    }
+  }, [isLoading, isAuthenticated, router, fetchDashboardData]);
+  
+  // Set up auto-refresh for processing reviews
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    
+    // If any review is processing, set up auto-refresh
+    const hasProcessingReviews = userData.reviews.some(review => review.status === 'processing');
+    
+    if (hasProcessingReviews && autoRefresh) {
+      intervalId = setInterval(() => {
+        fetchDashboardData(true);
+      }, 5000); // Refresh every 5 seconds
+    }
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [userData.reviews, autoRefresh, fetchDashboardData]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -145,6 +178,10 @@ export default function Dashboard() {
       default:
         return 'default';
     }
+  };
+  
+  const handleRefresh = () => {
+    fetchDashboardData(true);
   };
 
   if (isLoading || loading) {
@@ -248,13 +285,25 @@ export default function Dashboard() {
               <Typography variant="h6">
                 Recent Reviews
               </Typography>
-              <Button
-                variant="text"
-                onClick={() => router.push('/reviews')}
-                size="small"
-              >
-                View All
-              </Button>
+              <Box>
+                <Tooltip title="Refresh">
+                  <IconButton 
+                    size="small" 
+                    onClick={handleRefresh} 
+                    disabled={refreshing}
+                    sx={{ mr: 1 }}
+                  >
+                    <RefreshIcon />
+                  </IconButton>
+                </Tooltip>
+                <Button
+                  variant="text"
+                  onClick={() => router.push('/reviews')}
+                  size="small"
+                >
+                  View All
+                </Button>
+              </Box>
             </Box>
             
             {userData.reviews.length > 0 ? (
