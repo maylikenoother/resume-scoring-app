@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import os
 from api.core.config import settings
 from api.core.database import engine
-from api.routers import reviews, credits, notifications, cloudinary
+from api.routers import reviews, credits, notifications
 from api.services.background_tasks import setup_background_tasks
 from api.core.auth import router as auth_router
 from alembic.config import Config
@@ -76,7 +76,6 @@ app.add_middleware(
 app.include_router(reviews.router, prefix=settings.API_V1_STR)
 app.include_router(credits.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
-app.include_router(cloudinary.router, prefix=settings.API_V1_STR)
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth")
 
 @app.get(f"{settings.API_V1_STR}/health")

@@ -69,7 +69,6 @@ class Review(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     filename = Column(String)
     file_path = Column(String, nullable=True)
-    cloudinary_public_id = Column(String, nullable=True)
     file_content = Column(LargeBinary, nullable=True)
     content = Column(Text)
     content_type = Column(String, nullable=True)

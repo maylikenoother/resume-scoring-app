@@ -33,10 +33,6 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
-    CLOUDINARY_CLOUD_NAME: str = ""
-    CLOUDINARY_API_KEY: str = ""
-    CLOUDINARY_API_SECRET: str = ""
-    
     NEXT_PUBLIC_API_URL: str = "http://localhost:8000"
     API_BASE_URL: str = "http://localhost:8000"
     

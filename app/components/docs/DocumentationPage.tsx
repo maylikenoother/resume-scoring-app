@@ -288,17 +288,7 @@ export default function DocumentationPage() {
                 <Typography>Cloud Storage</Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Typography variant="body2" paragraph>
-                  Secure cloud storage for uploaded CV documents using Cloudinary, 
-                  with flexible file management and access control.
-                </Typography>
                 <List>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Storage Provider" 
-                      secondary="Cloudinary cloud service" 
-                    />
-                  </ListItem>
                   <ListItem>
                     <ListItemText 
                       primary="File Management" 

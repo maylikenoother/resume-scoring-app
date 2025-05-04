@@ -27,9 +27,6 @@ services:
     environment:
       - POSTGRES_URL=postgresql+asyncpg://${POSTGRES_USER:-cvreview}:${POSTGRES_PASSWORD:-cvreviewpass}@postgres:5432/${POSTGRES_DB:-cvreview_db}
       - SECRET_KEY=${SECRET_KEY}
-      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
-      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
-      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - API_BASE_URL=${API_BASE_URL}
     depends_on:

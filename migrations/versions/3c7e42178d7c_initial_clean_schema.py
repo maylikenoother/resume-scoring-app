@@ -48,7 +48,6 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('filename', sa.String(), nullable=True),
     sa.Column('file_path', sa.String(), nullable=True),
-    sa.Column('cloudinary_public_id', sa.String(), nullable=True),
     sa.Column('file_content', sa.LargeBinary(), nullable=True),
     sa.Column('content', sa.Text(), nullable=True),
     sa.Column('content_type', sa.String(), nullable=True),
