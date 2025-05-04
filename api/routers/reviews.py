@@ -12,6 +12,7 @@ from api.models.models import User, Review, CreditBalance, Notification, CreditT
 from api.schemas.schemas import ReviewList, Review as ReviewSchema
 from api.services.ai_service import generate_review
 from api.core.config import settings
+from api.utils.document_converter import convert_to_text
 
 router = APIRouter(
     prefix="/reviews",
@@ -38,8 +39,18 @@ async def upload_cv_for_review(
         )
 
     file_content = await file.read()
-    text_content = file_content.decode("utf-8", errors="ignore") if isinstance(file_content, bytes) else file_content
-
+    
+    # Convert the document to plain text
+    content_type = file.content_type or 'text/plain'
+    text_content = convert_to_text(file_content, content_type)
+    
+    if not text_content or not text_content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not extract text from the uploaded document. Please upload a valid CV document."
+        )
+    
+    # Store both original file and extracted text
     new_review = Review(
         user_id=current_user.id,
         filename=file.filename,

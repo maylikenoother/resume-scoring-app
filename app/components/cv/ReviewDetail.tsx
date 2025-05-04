@@ -39,13 +39,12 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
 
   const fetchReviewData = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await apiClient.get(`reviews/${reviewId}`);
       setReview(data);
+      setLoading(false);
     } catch (err: any) {
       console.error('Review detail error:', err);
       setError(err.message || 'An error occurred while loading review data');
-    } finally {
       setLoading(false);
     }
   }, [reviewId]);
@@ -64,18 +63,21 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
     
+    // Only poll if review is in processing status
     if (review?.status === 'processing') {
       intervalId = setInterval(() => {
-        fetchReviewData();
+        apiClient.get(`reviews/${reviewId}`)
+          .then(data => {
+            setReview(data);
+          })
+          .catch(err => console.error('Polling error:', err));
       }, 5000); // Poll every 5 seconds
     }
     
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [review, fetchReviewData]);
+  }, [review, reviewId]);
 
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -129,7 +131,7 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
         </Grid>
         {review.status === 'processing' && (
           <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary">Your CV is being analyzed. This may take a few minutes. The page will automatically update when processing is complete.</Typography>
+            <Typography variant="body2" color="text.secondary">Your CV is being analyzed. This may take a few minutes. The page will update automatically when complete.</Typography>
             <LinearProgress sx={{ mt: 1 }} />
           </Box>
         )}

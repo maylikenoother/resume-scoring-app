@@ -10,8 +10,18 @@ import {
   Alert,
   CircularProgress,
   Chip,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  AlertTitle,
 } from '@mui/material';
-import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
+import { 
+  CloudUpload as CloudUploadIcon,
+  Description as DescriptionIcon,
+  CheckCircle as CheckCircleIcon,
+  Info as InfoIcon 
+} from '@mui/icons-material';
 
 interface UploadFormProps {
   credits: number;
@@ -32,7 +42,13 @@ export default function UploadForm({ credits }: UploadFormProps) {
   };
 
   const validateAndSetFile = (selectedFile: File) => {
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+    const allowedTypes = [
+      'application/pdf', 
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+      'text/plain'
+    ];
+    
     if (!allowedTypes.includes(selectedFile.type)) {
       setError('Invalid file type. Please upload a PDF, DOC, DOCX, or TXT file.');
       return;
@@ -100,7 +116,6 @@ export default function UploadForm({ credits }: UploadFormProps) {
 
       const data = await response.json();
       
-      // Navigate to the review detail page
       router.push(`/reviews/${data.id}`);
     } catch (err: any) {
       setError(err.message || 'Failed to upload CV. Please try again.');
@@ -118,6 +133,35 @@ export default function UploadForm({ credits }: UploadFormProps) {
       <Typography variant="body1" sx={{ mb: 2 }}>
         Get professional AI-powered feedback on your CV. Each review costs 1 credit.
       </Typography>
+      
+      <Box sx={{ mb: 3 }}>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <AlertTitle>Best Results Tips</AlertTitle>
+          <Typography variant="body2">
+            For the most accurate analysis:
+          </Typography>
+          <List dense>
+            <ListItem>
+              <ListItemIcon sx={{ minWidth: '30px' }}>
+                <CheckCircleIcon fontSize="small" color="success" />
+              </ListItemIcon>
+              <ListItemText primary="PDF and TXT files work best" />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon sx={{ minWidth: '30px' }}>
+                <CheckCircleIcon fontSize="small" color="success" />
+              </ListItemIcon>
+              <ListItemText primary="Ensure your CV is text-based, not just images" />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon sx={{ minWidth: '30px' }}>
+                <InfoIcon fontSize="small" color="primary" />
+              </ListItemIcon>
+              <ListItemText primary="Word documents are automatically converted to text" />
+            </ListItem>
+          </List>
+        </Alert>
+      </Box>
       
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Typography>Supported formats: PDF, DOC, DOCX, TXT</Typography>
@@ -171,9 +215,12 @@ export default function UploadForm({ credits }: UploadFormProps) {
 
         {file && (
           <Box sx={{ mt: 2, p: 1, bgcolor: 'rgba(25, 118, 210, 0.08)', borderRadius: 1 }}>
-            <Typography variant="body2">
-              Selected file: {file.name} ({(file.size / 1024).toFixed(2)} KB)
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <DescriptionIcon sx={{ mr: 1, color: 'primary.main' }} />
+              <Typography variant="body2">
+                Selected file: {file.name} ({(file.size / 1024).toFixed(2)} KB)
+              </Typography>
+            </Box>
           </Box>
         )}
       </Paper>
