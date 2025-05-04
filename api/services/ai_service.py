@@ -1,9 +1,8 @@
 import logging
-import time
 import random
 import asyncio
 import re
-from typing import Dict, Any, Optional, Tuple
+from typing import Any, Tuple
 import google.generativeai as genai
 
 from api.core.config import settings
@@ -11,15 +10,6 @@ from api.core.config import settings
 logger = logging.getLogger(__name__)
 
 def score_cv(cv_content: str) -> float:
-    """
-    Simple CV scoring algorithm that evaluates based on various content factors.
-    
-    Args:
-        cv_content: The text content of the CV to score
-        
-    Returns:
-        A score between 0 and 10
-    """
     score = 5.0
     cv_lower = cv_content.lower()
     
@@ -39,7 +29,6 @@ def score_cv(cv_content: str) -> float:
         score += 0.5
     if re.search(r'projects|portfolio|achievements', cv_lower):
         score += 0.5
-
     if re.search(r'email|phone|contact|linkedin|github', cv_lower):
         score += 0.5
     
@@ -48,12 +37,13 @@ def score_cv(cv_content: str) -> float:
         score += 1.0
     elif achievement_count >= 3:
         score += 0.5
+
     metrics_count = len(re.findall(r'\d+%|\$\d+|\d+ years|\d+ months|\d+ people|\d+ team', cv_lower))
     if metrics_count >= 3:
         score += 1.0
     elif metrics_count >= 1:
         score += 0.5
-    
+
     action_verbs = ['implemented', 'developed', 'created', 'designed', 'managed', 'led', 'coordinated', 'achieved', 'improved']
     action_verb_count = sum(1 for verb in action_verbs if f" {verb} " in cv_lower or f"\n{verb} " in cv_lower)
     if action_verb_count >= 5:
@@ -62,25 +52,13 @@ def score_cv(cv_content: str) -> float:
         score += 0.5
     
     score = max(1.0, min(score, 10.0))
-    
     return round(score, 1)
 
 async def generate_review(cv_content: str) -> Tuple[str, float]:
-    """
-    Generate an AI review for the CV content using Google Gemini API,
-    and score the CV using a simple algorithm.
-    
-    Args:
-        cv_content: The text content of the CV to review
-        
-    Returns:
-        A tuple containing the formatted review of the CV and a score
-    """
     score = score_cv(cv_content)
     
     try:
         logger.info(f"Settings GEMINI_API_KEY present: {settings.GEMINI_API_KEY is not None}")
-        
         api_key = settings.GEMINI_API_KEY
         
         if not api_key:
@@ -88,8 +66,7 @@ async def generate_review(cv_content: str) -> Tuple[str, float]:
             return generate_mock_review(cv_content), score
         
         genai.configure(api_key=api_key)
-
-        model_name = "gemini-1.5-flash" 
+        model_name = "gemini-1.5-flash"
         logger.info(f"Using Gemini model: {model_name}")
         model = genai.GenerativeModel(model_name)
         
@@ -144,15 +121,6 @@ async def generate_review(cv_content: str) -> Tuple[str, float]:
         return generate_mock_review(cv_content), score
 
 def generate_mock_review(cv_content: str) -> str:
-    """
-    Generate a mock review when the AI service is unavailable.
-    
-    Args:
-        cv_content: The CV content (used to make the review appear more tailored)
-        
-    Returns:
-        A pre-formatted mock review
-    """
     has_education = "education" in cv_content.lower() or "university" in cv_content.lower() or "degree" in cv_content.lower()
     has_skills = "skills" in cv_content.lower() or "proficient" in cv_content.lower()
     has_experience = "experience" in cv_content.lower() or "work" in cv_content.lower()
@@ -160,10 +128,8 @@ def generate_mock_review(cv_content: str) -> str:
     sections = [
         "# CV Review Summary", 
         "Thank you for submitting your CV for review. Here's my professional feedback to help you improve your CV.",
-        
         "## Overall Structure and Formatting",
         "Your CV has a clear structure, but consider using more consistent formatting for section headings. Add more whitespace between sections to improve readability.",
-        
         "## Content and Relevance",
         "The content is relevant to your field, but you should tailor specific achievements to match job descriptions. Quantify your achievements with specific metrics where possible."
     ]

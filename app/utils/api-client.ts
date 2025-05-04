@@ -67,7 +67,6 @@ export const apiClient = {
 
       if (!response.ok) {
         if (response.status === 401) {
-          // If unauthorized, clear the token
           removeAuthToken();
         }
         await handleApiError(response);

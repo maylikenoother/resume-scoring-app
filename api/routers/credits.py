@@ -1,5 +1,4 @@
 from typing import Any, Dict
-
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

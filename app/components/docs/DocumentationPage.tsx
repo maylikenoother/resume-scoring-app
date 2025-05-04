@@ -26,7 +26,6 @@ import {
 } from '@mui/icons-material';
 import Navbar from '@/app/components/layout/Navbar';
 
-// Architecture diagram as SVG
 const ArchitectureDiagram = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 450">
     <rect x="50" y="50" width="600" height="350" fill="#f0f0f0" stroke="#333" strokeWidth="2" />
@@ -56,10 +55,6 @@ const ArchitectureDiagram = () => (
     {/* AI Service */}
     <rect x="600" y="100" width="150" height="60" fill="#9C27B0" rx="10" opacity="0.9" />
     <text x="675" y="135" textAnchor="middle" fill="white">Hugging Face AI</text>
-    
-    {/* Cloud Storage */}
-    <rect x="600" y="200" width="150" height="60" fill="#607D8B" rx="10" opacity="0.9" />
-    <text x="675" y="235" textAnchor="middle" fill="white">Cloudinary Storage</text>
     
     {/* Arrows */}
     <path d="M140 200 L200 140" fill="none" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead)" />

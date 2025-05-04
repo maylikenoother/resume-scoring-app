@@ -38,7 +38,6 @@ export default function ReviewsPage() {
       }
       setError('');
       
-      // Debug: Check if token exists before making the request
       const token = getAuthToken();
       if (!token) {
         console.error("No auth token found before fetching reviews");
@@ -46,14 +45,12 @@ export default function ReviewsPage() {
         return;
       }
       
-      // Add a query parameter to prevent caching issues
       const timestamp = new Date().getTime();
       const data = await apiClient.get(`reviews?_t=${timestamp}`);
       setReviews(data.reviews || []);
     } catch (err: any) {
       console.error('Error fetching reviews:', err);
       
-      // Check if the error is unauthorized (401)
       if (err.status === 401) {
         console.log("Unauthorized error when fetching reviews. Redirecting to login.");
         router.push('/login');
@@ -77,17 +74,15 @@ export default function ReviewsPage() {
     }
   }, [isLoading, isAuthenticated, router, fetchReviews]);
   
-  // Set up auto-refresh for processing reviews
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
     
-    // If any review is processing, set up auto-refresh
     const hasProcessingReviews = reviews.some(review => review.status === 'processing');
     
     if (hasProcessingReviews && autoRefresh) {
       intervalId = setInterval(() => {
         fetchReviews(true);
-      }, 5000); // Refresh every 5 seconds
+      }, 5000);
     }
     
     return () => {
@@ -124,7 +119,6 @@ export default function ReviewsPage() {
   };
   
   const handleUploadClick = () => {
-    // Check authentication again before navigation
     if (isAuthenticated) {
       router.push('/upload');
     } else {
@@ -133,7 +127,6 @@ export default function ReviewsPage() {
   };
   
   const handleReviewClick = (reviewId: number) => {
-    // Check authentication again before navigation
     if (isAuthenticated) {
       router.push(`/reviews/${reviewId}`);
     } else {

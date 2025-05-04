@@ -4,10 +4,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from typing import AsyncGenerator, Generator
-
 from fastapi.testclient import TestClient
 from fastapi import Depends
-
 from api.core.database import Base, get_db
 from api.core.auth import get_current_active_user
 from api.main import app

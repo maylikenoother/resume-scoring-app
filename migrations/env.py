@@ -1,12 +1,10 @@
 from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
-
 from alembic import context
 from api.core.database import Base
 from api.models import models 
 
-# this is the Alembic Config object
 config = context.config
 
 fileConfig(config.config_file_name)

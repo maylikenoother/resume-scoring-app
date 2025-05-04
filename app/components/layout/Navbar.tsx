@@ -59,7 +59,6 @@ export default function Navbar() {
         console.error('Error fetching credit balance:', error);
       }
       
-      // Fetch notifications
       try {
         const count = await apiClient.get('notifications/unread-count');
         setUnreadCount(count);

@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 
 def test_get_credit_balance(client: TestClient):

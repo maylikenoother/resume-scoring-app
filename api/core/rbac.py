@@ -1,7 +1,6 @@
 from typing import List, Optional, Callable, Any
 from functools import wraps
 from fastapi import HTTPException, status, Depends
-
 from api.models.models import User, UserRole
 from api.core.auth import get_current_active_user
 

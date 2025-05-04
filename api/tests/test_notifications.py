@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
@@ -69,7 +68,6 @@ def test_mark_all_as_read(client: TestClient):
     for notification in response.json()["notifications"]:
         assert notification["is_read"] is True
     
-    # Verify there are no unread notifications
     unread_response = client.get("/api/py/notifications/?unread_only=true")
     assert len(unread_response.json()["notifications"]) == 0
 

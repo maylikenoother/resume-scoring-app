@@ -28,7 +28,6 @@ async function handleApiRequest(
   try {
     const headers = new Headers();
     
-    // Simplified token handling - just use the cookie
     const cookieToken = request.cookies.get('access_token')?.value;
     
     if (cookieToken) {
@@ -124,7 +123,6 @@ async function handleApiRequest(
       }
     }
     
-    // If we get a new token from a login, set it in the cookie
     if (responseData && responseData.access_token) {
       const nextResponse = NextResponse.json(responseData, { 
         status: response.status,
@@ -133,7 +131,7 @@ async function handleApiRequest(
       
       nextResponse.cookies.set('access_token', responseData.access_token, {
         path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 7 days - match with backend
+        maxAge: 60 * 60 * 24 * 7,
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',

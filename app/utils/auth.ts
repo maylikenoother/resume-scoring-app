@@ -16,9 +16,8 @@ const TOKEN_COOKIE_NAME = 'access_token';
 const USER_DATA_KEY = 'user_data';
 
 export const setAuthToken = (token: string): void => {
-  // Use only cookies for token storage - consistent approach
   Cookies.set(TOKEN_COOKIE_NAME, token, { 
-    expires: 7, // 7 days - match with backend
+    expires: 7,
     path: '/',
     sameSite: 'lax',
     secure: window.location.protocol === 'https:'
@@ -26,7 +25,6 @@ export const setAuthToken = (token: string): void => {
 };
 
 export const getAuthToken = (): string | undefined => {
-  // Only use cookies for token retrieval
   return Cookies.get(TOKEN_COOKIE_NAME);
 };
 

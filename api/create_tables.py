@@ -1,11 +1,8 @@
 import asyncio
 import logging
-import os
-import sys
 import argparse
 from alembic.config import Config
 from alembic import command
-
 from api.core.database import engine, Base
 from api.models.models import User, CreditBalance, CreditTransaction, Review, Notification
 

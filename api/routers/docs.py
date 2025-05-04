@@ -44,11 +44,9 @@ async def get_documentation_pdf():
     """
     try:
         async with httpx.AsyncClient() as client:
-            # Fetch OpenAPI JSON
             response = await client.get('http://localhost:8000/openapi.json')
             openapi_spec = response.json()
         
-        # Generate PDF
         pdf_content = generate_api_documentation_pdf(openapi_spec)
         
         return Response(

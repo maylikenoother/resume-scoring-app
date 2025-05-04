@@ -1,8 +1,7 @@
 from typing import Any
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, update
+from sqlalchemy import select, desc
 from api.core.auth import get_current_active_user, validate_resource_ownership
 from api.core.database import get_db
 from api.models.models import User, Notification

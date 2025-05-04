@@ -65,7 +65,6 @@ export default function Dashboard() {
     notifications: [],
   });
   
-  // Auto-refresh timer for processing reviews
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const fetchDashboardData = useCallback(async (isRefreshing = false) => {
@@ -115,7 +114,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Set up initial data loading
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
@@ -126,17 +124,15 @@ export default function Dashboard() {
     }
   }, [isLoading, isAuthenticated, router, fetchDashboardData]);
   
-  // Set up auto-refresh for processing reviews
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
     
-    // If any review is processing, set up auto-refresh
     const hasProcessingReviews = userData.reviews.some(review => review.status === 'processing');
     
     if (hasProcessingReviews && autoRefresh) {
       intervalId = setInterval(() => {
         fetchDashboardData(true);
-      }, 5000); // Refresh every 5 seconds
+      }, 5000);
     }
     
     return () => {

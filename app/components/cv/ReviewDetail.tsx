@@ -69,7 +69,7 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
             setReview(data);
           })
           .catch(err => console.error('Polling error:', err));
-      }, 5000); // Poll every 5 seconds
+      }, 5000);
     }
     
     return () => {

@@ -46,14 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: userData.email,
           fullName: userData.full_name,
         } : null,
-      });
-      
-      // For debugging
-      console.log("Auth check:", {
-        authenticated,
-        token: getAuthToken()?.substring(0, 15) + "...",
-        userData
-      });
+      });   
     };
 
     checkAuth();

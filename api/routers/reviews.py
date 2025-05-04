@@ -1,6 +1,5 @@
 from typing import Any
 import io
-
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,8 +38,6 @@ async def upload_cv_for_review(
         )
 
     file_content = await file.read()
-    
-    # Convert the document to plain text
     content_type = file.content_type or 'text/plain'
     text_content = convert_to_text(file_content, content_type)
     
@@ -50,7 +47,6 @@ async def upload_cv_for_review(
             detail="Could not extract text from the uploaded document. Please upload a valid CV document."
         )
     
-    # Store both original file and extracted text
     new_review = Review(
         user_id=current_user.id,
         filename=file.filename,

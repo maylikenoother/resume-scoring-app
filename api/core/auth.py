@@ -10,7 +10,6 @@ from pydantic import BaseModel
 import logging
 import traceback
 from api.core.config import settings
-
 from api.core.config import settings
 from api.core.database import get_db
 from api.models.models import User

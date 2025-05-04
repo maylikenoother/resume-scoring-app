@@ -2,7 +2,6 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, Any, Optional
-
 from api.core.config import settings
 
 logger = logging.getLogger(__name__)

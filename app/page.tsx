@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from "@/app/components/AuthProvider";
-import Link from 'next/link';
 import {
   Box,
   Button,

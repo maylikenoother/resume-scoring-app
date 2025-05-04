@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
 import os
-
 from api.core.config import settings
 from api.core.database import engine
 from api.routers import reviews, credits, notifications, cloudinary

@@ -27,7 +27,6 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    // Redirect if already authenticated
     if (isAuthenticated()) {
       router.push('/dashboard');
     }
@@ -47,7 +46,6 @@ export default function RegisterPage() {
     setSuccess(false);
     setLoading(true);
 
-    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
@@ -59,7 +57,6 @@ export default function RegisterPage() {
       
       setSuccess(true);
       
-      // Redirect to login after a brief delay
       setTimeout(() => {
         router.push('/login');
       }, 2000);

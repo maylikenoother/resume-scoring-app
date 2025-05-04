@@ -53,22 +53,18 @@ export default function LoginPage() {
    try {
      const data = await apiClient.login(formData.email, formData.password);
 
-     // Make sure token is properly set in both Cookie and localStorage
      setAuthToken(data.access_token);
      
-     // Store user data
      setUserData({
        id: data.user_id,
        email: data.email,
        full_name: data.full_name,
      });
 
-     // Use window.location for a full page refresh to ensure cookie is applied
      window.location.href = '/dashboard';
    } catch (err: any) {
      console.error('Login error:', err);
-     
-     // Log detailed error info for debugging
+
      if (err.status) {
        console.error(`Status code: ${err.status}`);
      }

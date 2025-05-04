@@ -3,15 +3,6 @@ import markdown2
 import json
 
 def generate_api_documentation_pdf(openapi_spec: dict) -> bytes:
-    """
-    Generate a PDF from OpenAPI specification
-    
-    Args:
-        openapi_spec: OpenAPI specification dictionary
-    
-    Returns:
-        PDF content as bytes
-    """
     pdf = FPDF()
     pdf.add_page()
     
@@ -33,14 +24,12 @@ def generate_api_documentation_pdf(openapi_spec: dict) -> bytes:
     pdf.set_font("Arial", "", 10)
     paths = openapi_spec.get('paths', {})
     for path, path_info in paths.items():
-
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 10, path, ln=True)
         
         pdf.set_font("Arial", "", 10)
         for method, method_info in path_info.items():
             pdf.cell(0, 7, f"  Method: {method.upper()}", ln=True)
-            
             summary = method_info.get('summary', 'No summary')
             description = method_info.get('description', 'No description')
             pdf.cell(0, 7, f"  Summary: {summary}", ln=True)
@@ -49,15 +38,6 @@ def generate_api_documentation_pdf(openapi_spec: dict) -> bytes:
     return pdf.output(dest='S').encode('latin1')
 
 def markdown_to_pdf(markdown_content: str) -> bytes:
-    """
-    Convert markdown to PDF
-    
-    Args:
-        markdown_content: Markdown text to convert
-    
-    Returns:
-        PDF content as bytes
-    """
     html_content = markdown2.markdown(markdown_content)
     
     pdf = FPDF()
