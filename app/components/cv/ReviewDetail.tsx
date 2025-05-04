@@ -59,11 +59,9 @@ export default function ReviewDetail({ reviewId }: ReviewDetailProps) {
     }
   }, [reviewId, isLoading, isAuthenticated, router, fetchReviewData]);
 
-  // Add polling for processing reviews
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
     
-    // Only poll if review is in processing status
     if (review?.status === 'processing') {
       intervalId = setInterval(() => {
         apiClient.get(`reviews/${reviewId}`)

@@ -1,21 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Box, Container, Alert } from '@mui/material';
 import ReviewDetail from '@/app/components/cv/ReviewDetail';
 import Navbar from '@/app/components/layout/Navbar';
 
-interface ReviewDetailPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
+export default function ReviewDetailPage() {
   const router = useRouter();
-  // Access the ID safely
-  const id = params?.id || '';
+  const params = useParams();
+  const id = params?.id as string;
   const reviewId = parseInt(id);
 
   const [authState, setAuthState] = useState({
@@ -24,7 +18,6 @@ export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
   });
 
   useEffect(() => {
-    // This effect should only run once on mount
     const tokenExists = document.cookie.includes('access_token=');
     
     setAuthState({
@@ -35,7 +28,7 @@ export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
     if (!tokenExists) {
       router.push('/login');
     }
-  }, [router]); // Only depends on router
+  }, [router]);
 
   if (!authState.checked) return null;
 
