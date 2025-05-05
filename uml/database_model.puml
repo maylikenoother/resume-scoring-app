@@ -1,0 +1,69 @@
+@startuml Database Schema
+
+!define TABLE class
+!define PK <<PK>>
+!define FK <<FK>>
+
+skinparam linetype ortho
+skinparam monochrome false
+
+TABLE User {
+  + id: Integer PK
+  + email: String
+  + full_name: String
+  + hashed_password: String
+  + is_active: Boolean
+  + role: String
+  + created_at: DateTime
+  + updated_at: DateTime
+}
+
+TABLE CreditBalance {
+  + id: Integer PK
+  + user_id: Integer FK
+  + balance: Integer
+  + created_at: DateTime
+  + updated_at: DateTime
+}
+
+TABLE CreditTransaction {
+  + id: Integer PK
+  + credit_balance_id: Integer FK
+  + amount: Integer
+  + description: String
+  + transaction_type: String
+  + created_at: DateTime
+}
+
+TABLE Review {
+  + id: Integer PK
+  + user_id: Integer FK
+  + filename: String
+  + file_path: String
+  + file_content: LargeBinary
+  + content: Text
+  + content_type: String
+  + file_size: Integer
+  + review_result: Text
+  + status: String
+  + score: Float
+  + created_at: DateTime
+  + updated_at: DateTime
+}
+
+TABLE Notification {
+  + id: Integer PK
+  + user_id: Integer FK
+  + review_id: Integer FK
+  + message: String
+  + is_read: Boolean
+  + created_at: DateTime
+}
+
+User "1" -- "1" CreditBalance : has
+CreditBalance "1" -- "*" CreditTransaction : records
+User "1" -- "*" Review : owns
+User "1" -- "*" Notification : receives
+Review "1" -- "*" Notification : triggers
+
+@enduml

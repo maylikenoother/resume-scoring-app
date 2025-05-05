@@ -54,7 +54,7 @@ const ArchitectureDiagram = () => (
 
     {/* AI Service */}
     <rect x="600" y="100" width="150" height="60" fill="#9C27B0" rx="10" opacity="0.9" />
-    <text x="675" y="135" textAnchor="middle" fill="white">Hugging Face AI</text>
+    <text x="675" y="135" textAnchor="middle" fill="white">Google Gemini AI</text>
     
     {/* Arrows */}
     <path d="M140 200 L200 140" fill="none" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead)" />
@@ -121,7 +121,7 @@ export default function DocumentationPage() {
               <AccordionDetails>
                 <Typography variant="body2" paragraph>
                   Users can upload CVs in various formats (PDF, DOCX, TXT) for AI-powered analysis.
-                  The system leverages Hugging Face's AI to provide professional, detailed feedback on structure, content, and improvements.
+                  The system leverages Google's Gemini AI to provide professional, detailed feedback on structure, content, and improvements.
                 </Typography>
                 <List>
                   <ListItem>
@@ -133,7 +133,7 @@ export default function DocumentationPage() {
                   <ListItem>
                     <ListItemText 
                       primary="AI Analysis" 
-                      secondary="Comprehensive CV review using Google Flan-T5 large language model" 
+                      secondary="Comprehensive CV review using Google Gemini AI language model" 
                     />
                   </ListItem>
                   <ListItem>
@@ -206,13 +206,13 @@ export default function DocumentationPage() {
                 <Typography variant="body2" paragraph>
                   Advanced AI analysis provides professional, actionable feedback 
                   on CV structure, content, and potential improvements using the 
-                  Hugging Face Inference API.
+                  Google Gemini API.
                 </Typography>
                 <List>
                   <ListItem>
                     <ListItemText 
                       primary="AI Model" 
-                      secondary="Google Flan-T5 Large Language Model" 
+                      secondary="Google Gemini 1.5 Flash Large Language Model" 
                     />
                   </ListItem>
                   <ListItem>
@@ -285,20 +285,29 @@ export default function DocumentationPage() {
                 id="panel5-header"
               >
                 <StorageIcon sx={{ mr: 2 }} />
-                <Typography>Cloud Storage</Typography>
+                <Typography>File Storage</Typography>
               </AccordionSummary>
               <AccordionDetails>
+                <Typography variant="body2" paragraph>
+                  Secure file storage system for CV documents with ownership validation and efficient access control.
+                </Typography>
                 <List>
                   <ListItem>
                     <ListItemText 
-                      primary="File Management" 
-                      secondary="Automatic upload, secure access with ownership validation" 
+                      primary="Database Storage" 
+                      secondary="CV files stored directly in the database for security and simplified architecture" 
                     />
                   </ListItem>
                   <ListItem>
                     <ListItemText 
-                      primary="Content Delivery" 
-                      secondary="Fast CDN-based file access" 
+                      primary="Ownership Validation" 
+                      secondary="Secure access with user-based permissions" 
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="File Conversion" 
+                      secondary="Automatic text extraction from multiple document formats" 
                     />
                   </ListItem>
                 </List>
@@ -361,21 +370,21 @@ export default function DocumentationPage() {
               <ListItemIcon><SecurityIcon /></ListItemIcon>
               <ListItemText 
                 primary="Backend Framework" 
-                secondary="FastAPI (Python) with Async SQLAlchemy and Alembic migrations" 
+                secondary="FastAPI v0.115.0 (Python) with Async SQLAlchemy and Alembic migrations" 
               />
             </ListItem>
             <ListItem>
               <ListItemIcon><CloudUploadIcon /></ListItemIcon>
               <ListItemText 
                 primary="Frontend Framework" 
-                secondary="Next.js 15 with TypeScript and Material UI components" 
+                secondary="Next.js v15.3.1 with TypeScript and Material UI v5.17.1" 
               />
             </ListItem>
             <ListItem>
               <ListItemIcon><PsychologyIcon /></ListItemIcon>
               <ListItemText 
                 primary="AI Integration" 
-                secondary="Hugging Face Inference API with Google Flan-T5" 
+                secondary="Google Generative AI (Gemini 1.5 Flash model)" 
               />
             </ListItem>
             <ListItem>

@@ -1,0 +1,58 @@
+@startuml CV Review System Architecture
+
+!define RECTANGLE class
+!define DATABASE database
+!define CLOUD cloud
+
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam monochrome false
+
+package "Frontend (Next.js)" {
+  [User Interface] as UI
+  [API Client] as APIClient
+  [Authentication Provider] as AuthProvider
+}
+
+package "Backend (FastAPI)" {
+  [API Endpoints] as API
+  [Authentication Service] as AuthService
+  [Review Service] as ReviewService
+  [Credits Service] as CreditsService
+  [Notification Service] as NotificationService
+  [Background Tasks] as BackgroundTasks
+}
+
+package "External Services" {
+  CLOUD "Hugging Face AI API" as HuggingFace
+}
+
+package "Storage" {
+  DATABASE "SQLite (Development)" as SQLite
+  DATABASE "PostgreSQL (Production)" as PostgreSQL
+}
+
+UI --> AuthProvider
+UI --> APIClient
+APIClient --> API : HTTP/REST
+API --> AuthService
+API --> ReviewService
+API --> CreditsService
+API --> NotificationService
+
+ReviewService --> BackgroundTasks
+BackgroundTasks --> HuggingFace : AI Analysis
+ReviewService --> [File Processing]
+CreditsService --> [Transaction Manager]
+
+AuthService --> SQLite : Development
+ReviewService --> SQLite : Development
+CreditsService --> SQLite : Development
+NotificationService --> SQLite : Development
+
+AuthService --> PostgreSQL : Production
+ReviewService --> PostgreSQL : Production
+CreditsService --> PostgreSQL : Production
+NotificationService --> PostgreSQL : Production
+
+@enduml

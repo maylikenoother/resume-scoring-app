@@ -1,0 +1,40 @@
+@startuml Authentication Flow
+
+actor User
+participant "Frontend\n(Next.js)" as Frontend
+participant "Backend\n(FastAPI)" as Backend
+database "Database" as DB
+
+== Registration ==
+User -> Frontend: Submit registration form
+Frontend -> Backend: POST /api/py/auth/register
+Backend -> DB: Check if email exists
+DB --> Backend: Email availability
+Backend -> DB: Create user account
+Backend --> Frontend: Return user details
+Frontend --> User: Registration successful
+
+== Login ==
+User -> Frontend: Submit login credentials
+Frontend -> Backend: POST /api/py/auth/login
+Backend -> DB: Verify credentials
+DB --> Backend: User verification
+Backend -> Backend: Generate JWT token
+Backend --> Frontend: Return JWT token
+Frontend -> Frontend: Store token in cookie
+Frontend --> User: Redirect to dashboard
+
+== Authentication Check ==
+User -> Frontend: Access protected route
+Frontend -> Frontend: Check token validity
+Frontend -> Backend: Request with Authorization header
+Backend -> Backend: Validate JWT token
+Backend --> Frontend: Return authorized data
+Frontend --> User: Display protected content
+
+== Logout ==
+User -> Frontend: Click logout
+Frontend -> Frontend: Remove token from storage
+Frontend --> User: Redirect to login page
+
+@enduml
