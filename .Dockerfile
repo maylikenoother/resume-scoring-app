@@ -35,21 +35,27 @@ EXPOSE 3000 8000
 
 RUN echo '#!/bin/bash\n\
 \n\
-# Force migrations to run synchronously first\n\
-echo "Running database migrations..."\n\
-cd /app && alembic upgrade head\n\
-if [ $? -ne 0 ]; then\n\
-  echo "Error applying migrations!"\n\
-  exit 1\n\
+if [ "$AUTO_APPLY_MIGRATIONS" = "true" ]; then\n\
+  echo "Running database migrations..."\n\
+  cd /app && alembic upgrade head\n\
+  if [ $? -ne 0 ]; then\n\
+    echo "Error applying migrations!"\n\
+    exit 1\n\
+  fi\n\
+  echo "Migrations applied successfully"\n\
 fi\n\
-echo "Migrations applied successfully"\n\
+\n\
+# Get PORT from environment or default to 10000\n\
+PORT="${PORT:-10000}"\n\
 \n\
 echo "Starting FastAPI backend..."\n\
-uvicorn api.main:app --host 0.0.0.0 --port 8000 &\n\
+# The FastAPI backend should listen on $PORT to satisfy Render\n\
+uvicorn api.main:app --host 0.0.0.0 --port $PORT &\n\
 BACKEND_PID=$!\n\
 \n\
 echo "Starting Next.js frontend..."\n\
-npm start &\n\
+# Start Next.js on a different port (3000) and proxy API requests\n\
+(cd /app && NODE_ENV=production PORT=3000 npm start) &\n\
 FRONTEND_PID=$!\n\
 \n\
 function handle_shutdown {\n\

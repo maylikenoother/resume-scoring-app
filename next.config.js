@@ -11,7 +11,7 @@ const nextConfig = {
     return [
       {
         source: "/api/py/:path*",
-        destination: "http://localhost:8000/api/py/:path*"
+        destination: "/api/py/:path*"
       }
     ];
   }
