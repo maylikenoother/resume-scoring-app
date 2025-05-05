@@ -36,7 +36,6 @@ class Settings(BaseSettings):
         "http://localhost:3000", 
         "http://127.0.0.1:3000",
         "https://resume-scoring-app.onrender.com",
-        "*"
     ]
     
     NEXT_PUBLIC_API_URL: str = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
