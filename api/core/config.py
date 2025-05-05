@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional, Dict, Any
 from functools import lru_cache
 import secrets
+import os
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CV Review API"
@@ -31,10 +32,15 @@ class Settings(BaseSettings):
     
     BACKGROUND_WORKERS: int = 2
 
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "https://resume-scoring-app.onrender.com"
+    ]
     
-    NEXT_PUBLIC_API_URL: str = "http://localhost:8000"
-    API_BASE_URL: str = "http://localhost:8000"
+    # Updated API URLs to use environment variables or defaults
+    NEXT_PUBLIC_API_URL: str = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
+    API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
     
     ADMIN_USERS: List[str] = [] 
     
