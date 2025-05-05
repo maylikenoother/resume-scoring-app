@@ -21,10 +21,12 @@ package "Backend (FastAPI)" {
   [Credits Service] as CreditsService
   [Notification Service] as NotificationService
   [Background Tasks] as BackgroundTasks
+  [Email Service] as EmailService
 }
 
 package "External Services" {
-  CLOUD "Hugging Face AI API" as HuggingFace
+  CLOUD "Google Gemini AI API" as GeminiAI
+  CLOUD "Brevo Email Service" as BrevoEmail
 }
 
 package "Storage" {
@@ -41,9 +43,12 @@ API --> CreditsService
 API --> NotificationService
 
 ReviewService --> BackgroundTasks
-BackgroundTasks --> HuggingFace : AI Analysis
+BackgroundTasks --> GeminiAI : AI Analysis
 ReviewService --> [File Processing]
 CreditsService --> [Transaction Manager]
+
+AuthService --> EmailService
+EmailService --> BrevoEmail : Send Verification Emails
 
 AuthService --> SQLite : Development
 ReviewService --> SQLite : Development
