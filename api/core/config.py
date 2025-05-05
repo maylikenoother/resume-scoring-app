@@ -35,10 +35,10 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000", 
         "http://127.0.0.1:3000",
-        "https://resume-scoring-app.onrender.com"
+        "https://resume-scoring-app.onrender.com",
+        "*"
     ]
     
-    # Updated API URLs to use environment variables or defaults
     NEXT_PUBLIC_API_URL: str = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
     

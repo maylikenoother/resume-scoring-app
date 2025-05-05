@@ -34,7 +34,7 @@ export const apiClient = {
       endpoint = `${endpoint}/`;
     }
     
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ||  'https://cv-review-app-backend.onrender.com';;
     const url = new URL(`${apiBaseUrl}/api/py/${endpoint.replace(/^\//, '')}`);
     
     const headers: HeadersInit = {};
