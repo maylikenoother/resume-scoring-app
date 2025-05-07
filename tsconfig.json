@@ -35,6 +35,6 @@
     "**/*.ts", 
     "**/*.tsx", 
     ".next/types/**/*.ts"
-  ],
+, "cypress/e2e/auth.cy.js"  ],
   "exclude": ["node_modules"]
 }
