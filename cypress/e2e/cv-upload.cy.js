@@ -1,59 +1,64 @@
 describe('CV Upload Flow', () => {
-    beforeEach(() => {
-  
-      cy.window().then((win) => {
-        win.localStorage.setItem('authToken', 'fake-jwt-token');
-        win.localStorage.setItem('user', JSON.stringify({
-          id: '1',
-          email: 'test@example.com',
-          name: 'Test User'
-        }));
-      });
-  
-      cy.intercept('POST', '/api/cvs', {
-        statusCode: 201,
-        body: {
-          id: 'new-cv-id',
-          name: 'My New CV',
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        }
-      }).as('uploadRequest');
+  beforeEach(() => {
+    cy.window().then((win) => {
+      win.localStorage.setItem('user_data', JSON.stringify({
+        id: 1,
+        email: 'test@example.com',
+        full_name: 'Test User'
+      }));
     });
-  
-    it('should allow a user to upload a CV', () => {
-      cy.visit('/dashboard');
-      
-      cy.get('[data-testid="upload-cv-button"]').click();
-      cy.get('[data-testid="upload-cv-modal"]').should('be.visible');
-      
-      cy.screenshot('cv-upload-modal');
-      
-      cy.get('input[name="cvName"]').type('My New CV');
-  
-      cy.get('input[type="file"]').attachFile('example-cv.pdf');
-      
-      cy.screenshot('cv-upload-form-filled');
-      
-      cy.get('[data-testid="submit-upload"]').click();
-      cy.wait('@uploadRequest');
-      
-      cy.get('[data-testid="cv-list"]').should('contain', 'My New CV');
-      cy.get('[data-testid="cv-status-badge"]').should('contain', 'pending');
-      
-      cy.screenshot('cv-list-after-upload');
-    });
-  
-    it('should validate the upload form', () => {
-      cy.visit('/dashboard');
-      
-      cy.get('[data-testid="upload-cv-button"]').click();
-      
-      cy.get('[data-testid="submit-upload"]').click();
-      
-      cy.get('[data-testid="name-error"]').should('be.visible');
-      cy.get('[data-testid="file-error"]').should('be.visible');
-      
-      cy.screenshot('cv-upload-validation-errors');
-    });
+
+    cy.setCookie('access_token', 'fake-jwt-token');
+
+    cy.intercept('GET', '/api/py/credits/balance', {
+      statusCode: 200,
+      body: {
+        id: 1,
+        user_id: 1,
+        balance: 10
+      }
+    }).as('getCredits');
+
+    cy.intercept('POST', '/api/py/reviews/upload', {
+      statusCode: 201,
+      body: {
+        id: 1,
+        user_id: 1,
+        filename: 'My New CV',
+        status: 'pending',
+        created_at: new Date().toISOString()
+      }
+    }).as('uploadRequest');
   });
+
+  it('should allow a user to upload a CV', () => {
+    cy.visit('/upload');
+    cy.wait('@getCredits');
+     
+    cy.contains('Upload Your CV for Review').should('be.visible');
+    
+    cy.screenshot('cv-upload-modal');
+
+    cy.get('input[type="file"]').attachFile('example-cv.pdf', { force: true });
+    
+    cy.screenshot('cv-upload-form-filled');
+
+    cy.contains('Upload & Analyze').click();
+    cy.wait('@uploadRequest');
+    
+    cy.url().should('include', '/reviews/1');
+    
+    cy.screenshot('cv-list-after-upload');
+  });
+
+  it('should validate the upload form', () => {
+    cy.visit('/upload');
+    cy.wait('@getCredits');
+
+    cy.contains('Upload & Analyze').click();
+    
+    cy.contains('Please select a file').should('be.visible');
+    
+    cy.screenshot('cv-upload-validation-errors');
+  });
+});
