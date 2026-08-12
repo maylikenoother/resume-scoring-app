@@ -1,6 +1,7 @@
 from typing import Any
 import io
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
@@ -13,6 +14,8 @@ from api.services.ai_service import generate_review
 from api.core.config import settings
 from api.utils.document_converter import convert_to_text
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(
     prefix="/reviews",
     tags=["reviews"],
@@ -21,7 +24,6 @@ router = APIRouter(
 
 @router.post("/upload", response_model=ReviewSchema, status_code=status.HTTP_201_CREATED)
 async def upload_cv_for_review(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -79,7 +81,10 @@ async def upload_cv_for_review(
     notification.review_id = new_review.id
     await db.commit()
 
-    background_tasks.add_task(process_review, new_review.id)
+    # Vercel functions cannot safely rely on an in-memory worker after the response.
+    # Process the review in the request so success and failure are durably recorded.
+    await process_review(new_review.id)
+    await db.refresh(new_review)
     return new_review
 
 async def process_review(review_id: int):
@@ -112,12 +117,13 @@ async def process_review(review_id: int):
             ))
             await session.commit()
 
-        except Exception as e:
+        except Exception:
+            logger.exception("CV review processing failed for review_id=%s", review_id)
             review.status = ReviewStatus.FAILED
             session.add(Notification(
                 user_id=review.user_id,
                 review_id=review.id,
-                message=f"Your CV review has failed: {str(e)}",
+                message="Your CV review could not be completed. Please try again shortly.",
                 is_read=False
             ))
             await session.commit()

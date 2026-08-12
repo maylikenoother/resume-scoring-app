@@ -1,4 +1,4 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from api.core.config import settings
 
@@ -7,10 +7,10 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 engine = create_async_engine(
-    settings.DATABASE_URL, 
+    settings.database_url,
     echo=False,
     future=True,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {}
 )
 
 AsyncSessionLocal = sessionmaker(
@@ -29,7 +29,3 @@ async def get_db() -> AsyncSession:
             yield session
         finally:
             await session.close()
-
-async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)

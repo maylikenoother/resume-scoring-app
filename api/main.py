@@ -4,9 +4,8 @@ import logging
 from contextlib import asynccontextmanager
 import os
 from api.core.config import settings
-from api.core.database import engine
+from api.core.database import create_tables
 from api.routers import reviews, credits, notifications
-from api.services.background_tasks import setup_background_tasks
 from api.core.auth import router as auth_router
 from alembic.config import Config
 from alembic import command
@@ -35,27 +34,32 @@ async def apply_migrations():
         logger.error(f"Error applying migrations: {e}")
         logger.warning("Application starting with potentially outdated database schema")
 
+async def initialize_database():
+    """Create the initial schema when no migrations have been committed yet."""
+    auto_create_schema = os.environ.get("AUTO_CREATE_SCHEMA", "false").lower() == "true"
+    if auto_create_schema:
+        logger.info("Creating missing database tables...")
+        await create_tables()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting application")
+    if not settings.SECRET_KEY:
+        raise RuntimeError("SECRET_KEY must be configured before the API can start.")
     await apply_migrations()
+    await initialize_database()
 
     logger.info(f"JWT Authentication enabled with algorithm: {settings.ALGORITHM}")
     logger.info(f"Token expiration: {settings.ACCESS_TOKEN_EXPIRE_MINUTES} minutes")
     
-    db_url_parts = settings.get_database_url.split('@')
+    db_url_parts = settings.database_url.split('@')
     if len(db_url_parts) > 1:
         masked_url = f"{db_url_parts[0].split(':')[0]}:***@{db_url_parts[1]}"
     else:
-        masked_url = settings.get_database_url.split(':')[0]
+        masked_url = settings.database_url.split(':')[0]
     logger.info(f"Database URL: {masked_url} (masked credentials)")
-    
-    background_task_manager = setup_background_tasks()
-    
+
     yield
-    
-    if background_task_manager:
-        background_task_manager.shutdown()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -66,7 +70,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],

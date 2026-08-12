@@ -1,21 +1,29 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Optional, Dict, Any
 from functools import lru_cache
-import secrets
-import os
+from typing import Any, Dict, List, Optional
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CV Review API"
     API_V1_STR: str = "/api/py"
 
-    DATABASE_URL: str = "sqlite+aiosqlite:///./cv_review.db"
+    DATABASE_URL: Optional[str] = None
     POSTGRES_URL: Optional[str] = None
-    
-    @property
-    def get_database_url(self) -> str:
-        return self.POSTGRES_URL if self.POSTGRES_URL else self.DATABASE_URL
 
-    SECRET_KEY: str = secrets.token_hex(32)
+    @property
+    def database_url(self) -> str:
+        """Return a SQLAlchemy async URL for local or managed PostgreSQL."""
+        url = self.POSTGRES_URL or self.DATABASE_URL
+        if not url:
+            raise RuntimeError("DATABASE_URL or POSTGRES_URL must be configured.")
+
+        if url.startswith("postgres://"):
+            return f"postgresql+asyncpg://{url.removeprefix('postgres://')}"
+        if url.startswith("postgresql://"):
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
+    SECRET_KEY: str = ""
 
     ALGORITHM: str = "HS256" 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 
@@ -32,14 +40,11 @@ class Settings(BaseSettings):
     
     BACKGROUND_WORKERS: int = 2
 
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000", 
-        "http://127.0.0.1:3000",
-        "https://resume-scoring-app.onrender.com",
-    ]
-    
-    NEXT_PUBLIC_API_URL: str = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
-    API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    @property
+    def cors_origins(self) -> List[str]:
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
     
     ADMIN_USERS: List[str] = [] 
     
