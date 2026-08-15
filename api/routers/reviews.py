@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
 from api.core.auth import get_current_active_user, validate_resource_ownership
-from api.core.database import get_db, AsyncSessionLocal
+from api.core.database import get_db, get_session_factory
 from api.models.models import User, Review, CreditBalance, Notification, CreditTransaction, ReviewStatus
 from api.schemas.schemas import ReviewList, Review as ReviewSchema
 from api.services.ai_service import generate_review
@@ -88,7 +88,7 @@ async def upload_cv_for_review(
     return new_review
 
 async def process_review(review_id: int):
-    async with AsyncSessionLocal() as session:
+    async with get_session_factory()() as session:
         result = await session.execute(select(Review).where(Review.id == review_id))
         review = result.scalars().first()
         if not review:

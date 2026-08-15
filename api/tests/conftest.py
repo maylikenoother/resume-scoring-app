@@ -1,5 +1,6 @@
 import asyncio
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -7,7 +8,7 @@ from typing import AsyncGenerator, Generator
 from fastapi.testclient import TestClient
 from fastapi import Depends
 from api.core.database import Base, get_db
-from api.core.auth import get_current_active_user
+from api.core.auth import get_current_active_user, get_password_hash
 from api.main import app
 from api.models.models import User, CreditBalance
 
@@ -35,7 +36,7 @@ TEST_USER = User(
     id=1,
     email="test@example.com",
     full_name="Test User",
-    hashed_password="$2b$12$WtXBzbrfuKZwQCYAuhLNbOtQGZ/9pQUJmhpK8uJRJPLaqpHu0vWje",  # "password"
+    hashed_password=get_password_hash("password"),
     is_active=True,
 )
 
@@ -48,7 +49,7 @@ def event_loop() -> Generator:
     yield loop
     loop.close()
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 async def setup_test_db() -> AsyncGenerator:
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import jwt
 from fastapi import Depends, HTTPException, status, Request, APIRouter, Cookie
@@ -9,7 +9,6 @@ from sqlalchemy import select
 from pydantic import BaseModel
 import logging
 import traceback
-from api.core.config import settings
 from api.core.config import settings
 from api.core.database import get_db
 from api.models.models import User
@@ -44,9 +43,9 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
 
@@ -105,6 +104,33 @@ class RegisterUser(BaseModel):
     email: str
     password: str
     full_name: Optional[str] = None
+
+class CurrentUserResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str = ""
+
+class UpdateCurrentUser(BaseModel):
+    full_name: str
+
+@router.get("/me", response_model=CurrentUserResponse)
+async def read_current_user(current_user: User = Depends(get_current_active_user)) -> CurrentUserResponse:
+    return CurrentUserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name or "",
+    )
+
+@router.put("/me", response_model=CurrentUserResponse)
+async def update_current_user(
+    payload: UpdateCurrentUser,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUserResponse:
+    current_user.full_name = payload.full_name.strip()
+    await db.commit()
+    await db.refresh(current_user)
+    return CurrentUserResponse(id=current_user.id, email=current_user.email, full_name=current_user.full_name or "")
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(

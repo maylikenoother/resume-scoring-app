@@ -1,77 +1,19 @@
+/** Clear Review — polished blue product interface, calm hierarchy, practical feedback. */
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { isAuthenticated, getUserData, removeAuthToken, getAuthToken } from '@/app/utils/auth';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { apiClient, SessionUser } from '@/app/utils/api-client';
 
-interface AuthContextType {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  user: {
-    id: number;
-    email: string;
-    fullName: string;
-  } | null;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType>({
-  isAuthenticated: false,
-  isLoading: true,
-  user: null,
-  logout: () => {},
-});
-
-export const useAuth = () => useContext(AuthContext);
+type AuthContextValue = { isAuthenticated: boolean; isLoading: boolean; user: SessionUser | null; refreshSession: () => Promise<void>; logout: () => Promise<void> };
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authState, setAuthState] = useState({
-    isAuthenticated: false,
-    isLoading: true,
-    user: null as any,
-  });
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    const checkAuth = () => {
-      const authenticated = isAuthenticated();
-      const userData = getUserData();
-      
-      setAuthState({
-        isAuthenticated: authenticated,
-        isLoading: false,
-        user: authenticated && userData ? {
-          id: userData.id,
-          email: userData.email,
-          fullName: userData.full_name,
-        } : null,
-      });   
-    };
-
-    checkAuth();
-  }, [pathname]);
-
-  const logout = () => {
-    removeAuthToken();
-    setAuthState({
-      isAuthenticated: false,
-      isLoading: false,
-      user: null,
-    });
-    router.push('/login');
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated: authState.isAuthenticated,
-        isLoading: authState.isLoading,
-        user: authState.user,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const refreshSession = useCallback(async () => { try { const session = await apiClient.getSession(); setUser(session.authenticated ? session.user : null); } catch { setUser(null); } finally { setIsLoading(false); } }, []);
+  useEffect(() => { void refreshSession(); }, [refreshSession]);
+  const logout = useCallback(async () => { await apiClient.logout(); setUser(null); }, []);
+  return <AuthContext.Provider value={{ isAuthenticated: Boolean(user), isLoading, user, refreshSession, logout }}>{children}</AuthContext.Provider>;
 }
+
+export function useAuth(): AuthContextValue { const context = useContext(AuthContext); if (!context) throw new Error('useAuth must be used within AuthProvider'); return context; }

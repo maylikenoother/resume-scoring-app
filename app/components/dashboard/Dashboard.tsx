@@ -1,401 +1,47 @@
+/** Clear Review — polished blue product interface, calm hierarchy, practical feedback. */
 'use client';
-import { apiClient } from '@/app/utils/api-client';
-import React, { useState, useEffect, useCallback } from 'react';
+
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowForwardRounded, AutoAwesomeRounded, CheckCircleRounded, DescriptionOutlined, ErrorOutlineRounded, RefreshRounded, UploadFileRounded } from '@mui/icons-material';
+import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Container, Grid, IconButton, Stack, Tooltip, Typography } from '@mui/material';
+import { apiClient } from '@/app/utils/api-client';
 import { useAuth } from '@/app/components/AuthProvider';
-import {
-  Box,
-  Container,
-  Grid,
-  Paper,
-  Typography,
-  Button,
-  Chip,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  CircularProgress,
-  Alert,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
-import {
-  CloudUpload as CloudUploadIcon,
-  CreditCard as CreditCardIcon,
-  AccessTime as AccessTimeIcon,
-  CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon,
-  Notifications as NotificationsIcon,
-  Refresh as RefreshIcon,
-} from '@mui/icons-material';
 
-interface Review {
-  id: number;
-  filename: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  review_result: string | null;
-  score: number | null;
-}
+type Review = { id: number; filename: string; status: 'completed' | 'processing' | 'failed' | string; created_at: string; score: number | null };
+type DashboardData = { credits: number; reviews: Review[] };
+type CreditResponse = { balance: number };
+type ReviewResponse = { reviews: Review[] };
 
-interface Notification {
-  id: number;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
+const statusStyle = (status: Review['status']) => status === 'completed' ? { label: 'Ready', color: '#12805C', background: '#E7F7F0' } : status === 'failed' ? { label: 'Needs attention', color: '#B42318', background: '#FEEDEC' } : { label: 'In review', color: '#2454D7', background: '#E8EEFF' };
 
 export default function Dashboard() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
-  
+  const [data, setData] = useState<DashboardData>({ credits: 0, reviews: [] });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [userData, setUserData] = useState<{
-    credits: number;
-    reviews: Review[];
-    notifications: Notification[];
-  }>({
-    credits: 0,
-    reviews: [],
-    notifications: [],
-  });
-  
-  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const fetchDashboardData = useCallback(async (isRefreshing = false) => {
+  const load = useCallback(async (isRefresh = false) => {
+    isRefresh ? setRefreshing(true) : setLoading(true); setError('');
     try {
-      if (isRefreshing) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError('');
-      
-      let credits = 0;
-      try {
-        const creditsData = await apiClient.get('credits/balance');
-        credits = creditsData.balance;
-      } catch (err) {
-        console.error('Failed to fetch credits:', err);
-      }
-      
-      let reviews = [];
-      try {
-        const reviewsData = await apiClient.get('reviews/?limit=5');
-        reviews = reviewsData.reviews || [];
-      } catch (err) {
-        console.error('Failed to fetch reviews:', err);
-      }
-      
-      let notifications = [];
-      try {
-        const notificationsData = await apiClient.get('notifications/?limit=5');
-        notifications = notificationsData.notifications || [];
-      } catch (err) {
-        console.error('Failed to fetch notifications:', err);
-      }
-      
-      setUserData({
-        credits,
-        reviews,
-        notifications,
-      });
-    } catch (err: any) {
-      setError('An error occurred while loading dashboard data. Please try again.');
-      console.error('Dashboard error:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      const [creditResult, reviewResult] = await Promise.all([apiClient.get<CreditResponse>('credits/balance'), apiClient.get<ReviewResponse>('reviews/?limit=4')]);
+      setData({ credits: creditResult.balance, reviews: reviewResult.reviews ?? [] });
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'We could not load your workspace. Please try again.'); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.push('/login');
-      } else {
-        fetchDashboardData();
-      }
-    }
-  }, [isLoading, isAuthenticated, router, fetchDashboardData]);
-  
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    
-    const hasProcessingReviews = userData.reviews.some(review => review.status === 'processing');
-    
-    if (hasProcessingReviews && autoRefresh) {
-      intervalId = setInterval(() => {
-        fetchDashboardData(true);
-      }, 5000);
-    }
-    
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [userData.reviews, autoRefresh, fetchDashboardData]);
+  useEffect(() => { if (!isLoading && !isAuthenticated) router.replace('/login?from=/dashboard'); if (!isLoading && isAuthenticated) void load(); }, [isAuthenticated, isLoading, load, router]);
+  if (isLoading || loading) return <Box sx={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}><CircularProgress /></Box>;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircleIcon color="success" />;
-      case 'processing':
-        return <AccessTimeIcon color="primary" />;
-      case 'failed':
-        return <ErrorIcon color="error" />;
-      default:
-        return <AccessTimeIcon color="disabled" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'success';
-      case 'processing':
-        return 'primary';
-      case 'failed':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-  
-  const handleRefresh = () => {
-    fetchDashboardData(true);
-  };
-
-  if (isLoading || loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper
-            sx={{
-              p: 3,
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100%',
-            }}
-          >
-            <Typography variant="h6" gutterBottom>
-              Credit Balance
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <CreditCardIcon sx={{ mr: 1, color: 'primary.main' }} />
-              <Typography variant="h3" component="div" color="primary.main">
-                {userData.credits}
-              </Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Each CV review costs 1 credit.
-            </Typography>
-            <Box sx={{ mt: 'auto', pt: 2 }}>
-              <Button
-                variant="contained"
-                onClick={() => router.push('/credits')}
-                fullWidth
-              >
-                Purchase Credits
-              </Button>
-            </Box>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Paper
-            sx={{
-              p: 3,
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100%',
-            }}
-          >
-            <Typography variant="h6" gutterBottom>
-              Quick Actions
-            </Typography>
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={12} sm={6}>
-                <Button
-                  variant="contained"
-                  startIcon={<CloudUploadIcon />}
-                  onClick={() => router.push('/upload')}
-                  fullWidth
-                  disabled={userData.credits < 1}
-                >
-                  Upload CV
-                </Button>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Button
-                  variant="outlined"
-                  startIcon={<NotificationsIcon />}
-                  onClick={() => router.push('/notifications')}
-                  fullWidth
-                >
-                  Notifications
-                </Button>
-              </Grid>
-            </Grid>
-            <Typography variant="body2" color="text.secondary">
-              Upload your CV to get professional AI-powered feedback to improve your job prospects.
-            </Typography>
-            {userData.credits < 1 && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                You need at least 1 credit to submit a CV for review.
-              </Alert>
-            )}
-          </Paper>
-        </Grid>
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">
-                Recent Reviews
-              </Typography>
-              <Box>
-                <Tooltip title="Refresh">
-                  <IconButton 
-                    size="small" 
-                    onClick={handleRefresh} 
-                    disabled={refreshing}
-                    sx={{ mr: 1 }}
-                  >
-                    <RefreshIcon />
-                  </IconButton>
-                </Tooltip>
-                <Button
-                  variant="text"
-                  onClick={() => router.push('/reviews')}
-                  size="small"
-                >
-                  View All
-                </Button>
-              </Box>
-            </Box>
-            
-            {userData.reviews.length > 0 ? (
-              <List>
-                {userData.reviews.map((review, index) => (
-                  <React.Fragment key={review.id}>
-                    <ListItem
-                      button
-                      onClick={() => router.push(`/reviews/${review.id}`)}
-                      sx={{ 
-                        borderRadius: 1,
-                        '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
-                      }}
-                    >
-                      <ListItemIcon>
-                        {getStatusIcon(review.status)}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={review.filename}
-                        secondary={`Submitted on ${formatDate(review.created_at)}`}
-                      />
-                      <Chip
-                        label={review.status.charAt(0).toUpperCase() + review.status.slice(1)}
-                        color={getStatusColor(review.status) as any}
-                        size="small"
-                      />
-                    </ListItem>
-                    {index < userData.reviews.length - 1 && <Divider component="li" />}
-                  </React.Fragment>
-                ))}
-              </List>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 3 }}>
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  You haven't submitted any CVs for review yet.
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<CloudUploadIcon />}
-                  onClick={() => router.push('/upload')}
-                  disabled={userData.credits < 1}
-                >
-                  Upload Your First CV
-                </Button>
-              </Box>
-            )}
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">
-                Recent Notifications
-              </Typography>
-              <Button
-                variant="text"
-                onClick={() => router.push('/notifications')}
-                size="small"
-              >
-                View All
-              </Button>
-            </Box>
-            
-            {userData.notifications.length > 0 ? (
-              <List>
-                {userData.notifications.map((notification, index) => (
-                  <React.Fragment key={notification.id}>
-                    <ListItem
-                      sx={{
-                        bgcolor: notification.is_read ? 'transparent' : 'rgba(25, 118, 210, 0.08)',
-                        borderRadius: 1,
-                      }}
-                    >
-                      <ListItemIcon>
-                        <NotificationsIcon color={notification.is_read ? 'disabled' : 'primary'} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={notification.message}
-                        secondary={formatDate(notification.created_at)}
-                      />
-                    </ListItem>
-                    {index < userData.notifications.length - 1 && <Divider component="li" />}
-                  </React.Fragment>
-                ))}
-              </List>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 3 }}>
-                <Typography color="text.secondary">
-                  You Don&apos;t have any notifications yet.
-                </Typography>
-              </Box>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
-    </Container>
-  );
+  const firstName = user?.full_name?.split(' ')[0] || 'there';
+  return <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}><Stack spacing={4}>
+    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={2}><Box><Typography color="primary.main" fontWeight={800}>YOUR WORKSPACE</Typography><Typography variant="h2" sx={{ fontSize: { xs: '2.4rem', md: '3.25rem' }, mt: 0.5 }}>Hello, {firstName}.</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>Review your progress and decide what to improve next.</Typography></Box><Button variant="contained" startIcon={<UploadFileRounded />} onClick={() => router.push('/upload')}>Upload a CV</Button></Stack>
+    {error && <Alert severity="error" action={<Button color="inherit" size="small" onClick={() => void load()}>Try again</Button>}>{error}</Alert>}
+    <Grid container spacing={2.5}><Grid item xs={12} md={4}><Card elevation={0} sx={{ height: '100%', border: '1px solid', borderColor: 'divider', background: 'linear-gradient(145deg, #FFFFFF, #F4F7FF)' }}><CardContent sx={{ p: 3.25 }}><Typography color="text.secondary" fontWeight={700}>Review credits</Typography><Stack direction="row" alignItems="baseline" spacing={1} mt={1.5}><Typography variant="h2" color="primary.main">{data.credits}</Typography><Typography color="text.secondary">available</Typography></Stack><Typography variant="body2" color="text.secondary" sx={{ mt: 2.5, mb: 2 }}>One credit gives you one structured CV review.</Typography><Button variant="text" endIcon={<ArrowForwardRounded />} onClick={() => router.push('/credits')}>Manage credits</Button></CardContent></Card></Grid>
+    <Grid item xs={12} md={8}><Card elevation={0} sx={{ height: '100%', border: '1px solid', borderColor: 'divider' }}><CardContent sx={{ p: 3.25 }}><Stack direction="row" alignItems="center" justifyContent="space-between"><Box><Typography color="text.secondary" fontWeight={700}>Your next review</Typography><Typography variant="h6" sx={{ mt: 0.5 }}>{data.credits > 0 ? 'Ready whenever you are.' : 'Add a credit to begin.'}</Typography></Box><Box sx={{ p: 1.4, borderRadius: 2.5, bgcolor: 'primary.light', color: 'primary.main' }}><AutoAwesomeRounded /></Box></Stack><Typography color="text.secondary" sx={{ mt: 1.4, mb: 2.5 }}>Upload the version you are working on. We will keep the result with your previous feedback.</Typography><Button variant="outlined" onClick={() => router.push(data.credits > 0 ? '/upload' : '/credits')}>{data.credits > 0 ? 'Choose a CV' : 'View credits'}</Button></CardContent></Card></Grid></Grid>
+    <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}><CardContent sx={{ p: { xs: 2.5, sm: 3.5 } }}><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.25 }}><Box><Typography variant="h6">Recent reviews</Typography><Typography variant="body2" color="text.secondary">Your latest feedback, in one place.</Typography></Box><Tooltip title="Refresh"><IconButton onClick={() => void load(true)} disabled={refreshing} aria-label="Refresh reviews"><RefreshRounded /></IconButton></Tooltip></Stack>
+    {data.reviews.length === 0 ? <Box sx={{ textAlign: 'center', py: 5, border: '1px dashed', borderColor: 'divider', borderRadius: 3, bgcolor: '#FBFCFE' }}><DescriptionOutlined sx={{ color: 'primary.main', fontSize: 34 }} /><Typography fontWeight={750} sx={{ mt: 1.5 }}>Your first review will appear here.</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, mb: 2 }}>Start with the CV version you are actively refining.</Typography><Button variant="contained" size="small" onClick={() => router.push('/upload')}>Upload a CV</Button></Box> : <Stack spacing={1.25}>{data.reviews.map((review) => { const status = statusStyle(review.status); return <Box key={review.id} onClick={() => router.push(`/reviews/${review.id}`)} sx={{ cursor: 'pointer', px: 2, py: 1.75, display: 'flex', gap: 1.5, alignItems: 'center', borderRadius: 3, bgcolor: '#FBFCFE', transition: 'background 160ms ease', '&:hover': { bgcolor: '#F0F4FF' } }}><Box sx={{ p: 1, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.main' }}><DescriptionOutlined fontSize="small" /></Box><Box sx={{ minWidth: 0, flex: 1 }}><Typography noWrap fontWeight={750}>{review.filename}</Typography><Typography variant="body2" color="text.secondary">Submitted {new Date(review.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</Typography></Box>{review.score !== null && <Typography fontWeight={800} color="primary.main" sx={{ display: { xs: 'none', sm: 'block' } }}>{review.score}%</Typography>}<Chip label={status.label} size="small" sx={{ color: status.color, bgcolor: status.background, fontWeight: 750 }} /></Box>; })}</Stack>}</CardContent></Card>
+  </Stack></Container>;
 }

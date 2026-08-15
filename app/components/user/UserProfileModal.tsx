@@ -43,7 +43,7 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
   useEffect(() => {
     if (user) {
       setFormData({
-        fullName: user.fullName || '',
+        fullName: user.full_name || '',
         email: user.email || '',
       });
     }
@@ -72,8 +72,8 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
       });
       
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while updating your profile.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred while updating your profile.');
       console.error('Profile update error:', err);
     } finally {
       setSaving(false);
@@ -83,7 +83,7 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
   const resetForm = () => {
     if (user) {
       setFormData({
-        fullName: user.fullName || '',
+        fullName: user.full_name || '',
         email: user.email || '',
       });
     }
@@ -138,7 +138,7 @@ export default function UserProfileModal({ open, onClose }: UserProfileModalProp
                 <Avatar 
                   sx={{ width: 100, height: 100, bgcolor: 'primary.main', fontSize: 40 }}
                 >
-                  {user.fullName?.[0] || user.email?.[0] || '?'}
+                  {user.full_name?.[0] || user.email?.[0] || '?'}
                 </Avatar>
               </Box>
 

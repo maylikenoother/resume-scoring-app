@@ -1,5 +1,7 @@
+import os
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,9 +15,32 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """Return a SQLAlchemy async URL for local or managed PostgreSQL."""
-        url = self.POSTGRES_URL or self.DATABASE_URL
+        # Resolve directly from the process environment first. Vercel injects
+        # integration variables at function runtime, while `.env` remains for
+        # local development only.
+        url = (
+            os.getenv("POSTGRES_URL")
+            or os.getenv("DATABASE_URL")
+            or self.POSTGRES_URL
+            or self.DATABASE_URL
+        )
         if not url:
             raise RuntimeError("DATABASE_URL or POSTGRES_URL must be configured.")
+
+        if not url.startswith(("postgres://", "postgresql://")):
+            return url
+
+        # Neon exposes conventional libpq URLs. Asyncpg does not accept libpq's
+        # ``channel_binding`` parameter, so remove it while preserving supported
+        # TLS parameters for SQLAlchemy's asyncpg dialect.
+        parsed = urlsplit(url)
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        query.pop("channel_binding", None)
+        if "sslmode" in query:
+            query["ssl"] = query.pop("sslmode")
+        url = urlunsplit(
+            (parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment)
+        )
 
         if url.startswith("postgres://"):
             return f"postgresql+asyncpg://{url.removeprefix('postgres://')}"

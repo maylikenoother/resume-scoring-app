@@ -4,7 +4,8 @@ import { jwtDecode } from "jwt-decode";
 
 const publicPaths = [
   '/', '/login', '/register', '/docs', '/debug',
-  '/api/py/health', '/api/py/auth/login', '/api/py/auth/register'
+  '/api/py/health', '/api/py/auth/login', '/api/py/auth/register',
+  '/api/auth/login', '/api/auth/logout', '/api/auth/session'
 ];
 
 const publicApiPaths = [

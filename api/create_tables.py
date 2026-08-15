@@ -3,7 +3,7 @@ import logging
 import argparse
 from alembic.config import Config
 from alembic import command
-from api.core.database import engine, Base
+from api.core.database import Base, get_engine
 from api.models.models import User, CreditBalance, CreditTransaction, Review, Notification
 
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 async def create_tables_directly():
     """Create tables directly using SQLAlchemy metadata (legacy method)"""
     logger.info("Creating database tables directly using SQLAlchemy...")
-    async with engine.begin() as conn:
+    async with get_engine().begin() as conn:
         await conn.run_sync(lambda conn: Base.metadata.drop_all(conn))
         await conn.run_sync(lambda conn: Base.metadata.create_all(conn))
     logger.info("Database tables created successfully")
